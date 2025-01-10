@@ -3,7 +3,7 @@ import { Typography, List, ListItem, ListItemText, Link } from '@mui/material';
 import axios from 'axios';
 
 const Home = () => {
-  const [issues, setIssues] = useState([]);  // State to store fetched issues
+  const [issues, setIssues] = useState([]);  
   const [loading, setLoading] = useState(true);  // State to track loading state
   const [error, setError] = useState(null);  // State to track errors
 
@@ -23,11 +23,11 @@ const Home = () => {
       .get(url, { headers })
       .then(response => {
         setIssues(response.data.items);  // Set the fetched issues to state
-        setLoading(false);  // Stop loading
+        setLoading(false); 
       })
       .catch(error => {
         setError('Failed to fetch issues');
-        setLoading(false);  // Stop loading
+        setLoading(false); 
       });
   }, []);
 
@@ -35,13 +35,10 @@ const Home = () => {
     <div>
       <Typography variant="h4">Home</Typography>
 
-      {/* Display loading message if issues are still being fetched */}
       {loading && <Typography variant="body1">Loading issues...</Typography>}
 
-      {/* Display error message if there was an error during the fetch */}
       {error && <Typography variant="body1" color="error">{error}</Typography>}
 
-      {/* If issues are fetched, display them in a list */}
       {!loading && !error && (
         <List>
           {issues.map(issue => (
