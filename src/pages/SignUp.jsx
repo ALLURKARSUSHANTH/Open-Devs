@@ -1,20 +1,30 @@
 import React, { useState } from 'react';
-import { TextField, Button, Box, Typography, Container, Grid, CssBaseline } from '@mui/material';
+import { TextField, Button, Box, Typography, Container,Grid } from '@mui/material';
+import { registerWithEmailAndPassword } from '../firebase/auth';
+import { useNavigate } from 'react-router-dom';
 
 const SignUp = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword,setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if(password===confirmPassword){
-    setLoading(true);
-    setTimeout(() => {
+      setLoading(true);
+    try{
+      await registerWithEmailAndPassword(email,password);
+      navigate('/');
+    }
+    catch(error){
+      console.log('Error signing Up:',error.message);
+    }
+    finally{
       setLoading(false);
-      console.log('User signed in:', { email, password });
-    }, 1000);  
+    }  
   }
   else{
     alert("Passwords do not match");
@@ -77,6 +87,16 @@ const SignUp = () => {
             {loading ? 'Signing up...' : 'Sign up'}
           </Button>
         </form>
+          <Grid container justifyContent="flex-end" sx={{ mt: 2 }}>
+                  <Grid item>
+                    <Typography variant="body2" color="textSecondary">
+                      Already have an account?{' '}
+                      <a href="/signin" style={{ textDecoration: 'none' }}>
+                        Sign in
+                      </a>
+                    </Typography>
+                  </Grid>
+                </Grid>
       </Box>
     </Container>
   );
