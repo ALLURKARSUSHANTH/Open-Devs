@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
-import { TextField, Button, Box, Typography, Container, Grid } from '@mui/material';
-import { useNavigate } from 'react-router-dom';
-import { loginWithEmailAndPassword } from '../firebase/auth';
+  import React, { useState } from 'react';
+  import { TextField, Button, Box, Typography, Container, Grid } from '@mui/material';
+  import { useNavigate } from 'react-router-dom';
+  import { loginWithEmailAndPassword } from '../firebase/auth';
 
-const SignIn = () => {
+  const SignIn = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
@@ -23,7 +23,7 @@ const SignIn = () => {
     };
 
     return (
-         <Container maxWidth="xs">
+          <Container maxWidth="xs">
               <Box
                 sx={{
                   display: 'flex',
@@ -82,6 +82,6 @@ const SignIn = () => {
               </Box>
             </Container>
     );
-};
+  };
 
-export default SignIn;
+  export default SignIn;

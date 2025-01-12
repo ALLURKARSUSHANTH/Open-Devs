@@ -35,7 +35,7 @@ const NavBar = () => {
 
   return (
     <div>
-      <AppBar position='sticky' color='inherit'>
+      <AppBar position='sticky' sx={{ backgroundColor: '#335', color: 'White' }}>
         <Toolbar>
           <IconButton
             edge='start'
@@ -47,7 +47,7 @@ const NavBar = () => {
             <MenuIcon />
           </IconButton>
           <Typography variant='h6' sx={{ flexGrow: 1 }}>
-            <Link to="/" style={{ color: 'black', fontWeight : 'bold', fontSize: '2rem', textDecoration: 'none' }}>
+            <Link to="/" style={{ fontWeight : 'bold', fontSize: '2rem',color:'white' }}>
               Open-Devs
             </Link>
           </Typography>

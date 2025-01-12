@@ -1,64 +1,121 @@
 import React, { useEffect, useState } from 'react';
-import { Typography, List, ListItem, ListItemText, Link } from '@mui/material';
+import { Typography, Grid, Card, CardContent, CardMedia, Button, Link, CircularProgress } from '@mui/material';
 import axios from 'axios';
 
 const Home = () => {
-  const [issues, setIssues] = useState([]);  
-  const [loading, setLoading] = useState(true);  // State to track loading state
-  const [error, setError] = useState(null);  // State to track errors
+  const [repos, setRepos] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // GitHub personal access token and API endpoint
   const ACCESS_TOKEN = import.meta.env.VITE_GITHUB_ACCESS_TOKEN;
-  const query = 'label:"good first issue" state:open';
-  const url = `https://api.github.com/search/issues?q=${encodeURIComponent(query)}`;
-  // Set up headers with authentication
+  const url = 'https://api.github.com/search/repositories?q=stars:%3E10000&sort=stars&order=desc';
+
   const headers = {
     'Authorization': `token ${ACCESS_TOKEN}`,
-    'Accept': 'application/vnd.github.v3+json'
+    'Accept': 'application/vnd.github.v3+json',
   };
 
-  // Fetch issues when the component is mounted
   useEffect(() => {
     axios
       .get(url, { headers })
-      .then(response => {
-        setIssues(response.data.items);  // Set the fetched issues to state
-        setLoading(false); 
+      .then((response) => {
+        setRepos(response.data.items);
+        setLoading(false);
       })
-      .catch(error => {
-        setError('Failed to fetch issues');
-        setLoading(false); 
+      .catch((error) => {
+        console.error("Error fetching repositories:", error);
+        setError('Failed to fetch repositories');
+        setLoading(false);
       });
   }, []);
 
+  const truncateDescription = (description) => {
+    const maxLength = 150; 
+    if (description && description.length > maxLength) {
+      return `${description.substring(0, maxLength)}...`;
+    }
+    return description;
+  };
+
+  const [expandedRepos, setExpandedRepos] = useState({}); 
+
+  const handleToggleDescription = (repoId) => {
+    setExpandedRepos((prevState) => ({
+      ...prevState,
+      [repoId]: !prevState[repoId], 
+    }));
+  };
+
   return (
     <div>
-      <Typography variant="h4">Home</Typography>
+      <Typography variant="h4" align="start" gutterBottom  style={{ padding: '20px', fontWeight: 'bold' ,color: 'ff5733'}}>
+        Popular Repositories :
+      </Typography>
 
-      {loading && <Typography variant="body1">Loading issues...</Typography>}
+      {loading && (
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '20px' }}>
+          <CircularProgress />
+        </div>
+      )}
 
-      {error && <Typography variant="body1" color="error">{error}</Typography>}
+      {error && (
+        <Typography variant="body1" color="error" align="center" style={{ padding: '20px' }}>
+          {error}
+        </Typography>
+      )}
 
       {!loading && !error && (
-        <List>
-          {issues.map(issue => (
-            <ListItem key={issue.id}>
-              <ListItemText
-                primary={issue.title}
-                secondary={
-                  <>
-                    <Typography variant="body2">
-                      Repository: {issue.repository_url.split('/').pop()}
+        <Grid container spacing={4} justifyContent="center">
+          {repos.map((repo) => {
+            const isDescriptionExpanded = expandedRepos[repo.id] || false;
+            const description = repo.description || 'No description available';
+            const truncatedDescription = truncateDescription(description);
+
+            return (
+              <Grid item xs={12} sm={6} md={4} lg={2} key={repo.id}>
+                <Card>
+                  <CardMedia
+                    component="img"
+                    height="140"
+                    image={repo.owner.avatar_url}
+                    alt={repo.name}
+                  />
+                  <CardContent>
+                    <Typography variant="h6" component="div">
+                      {repo.name}
                     </Typography>
-                    <Link href={issue.html_url} target="_blank" rel="noopener">
-                      View Issue
+                    <Typography variant="body2" color="text.secondary">
+                      {isDescriptionExpanded ? description : truncatedDescription}
+                    </Typography>
+                    {description.length > 150 && !isDescriptionExpanded && (
+                      <Button
+                        size="small"
+                        color="primary"
+                        onClick={() => handleToggleDescription(repo.id)}
+                      >
+                        See More
+                      </Button>
+                    )}
+                    {description.length > 150 && isDescriptionExpanded && (
+                      <Button
+                        size="small"
+                        color="primary"
+                        onClick={() => handleToggleDescription(repo.id)}
+                      >
+                        See Less
+                      </Button>
+                    )}
+                  </CardContent>
+                  <Button size="small" color="primary">
+                    <Link href={repo.html_url} target="_blank" rel="noopener">
+                      View Repository
                     </Link>
-                  </>
-                }
-              />
-            </ListItem>
-          ))}
-        </List>
+                  </Button>
+                </Card>
+              </Grid>
+            );
+          })}
+        </Grid>
       )}
     </div>
   );
