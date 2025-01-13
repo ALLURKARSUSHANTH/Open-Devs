@@ -48,7 +48,7 @@ const Home = () => {
 
   return (
     <div>
-      <Typography variant="h4" align="start" gutterBottom  style={{ padding: '20px', fontWeight: 'bold' ,color: 'ff5733'}}>
+      <Typography variant="h4" align="start" gutterBottom  style={{ padding: '20px', fontWeight: 'bold' ,color: '#FF5733'}}>
         Popular Repositories :
       </Typography>
 

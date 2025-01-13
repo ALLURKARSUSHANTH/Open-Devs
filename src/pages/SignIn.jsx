@@ -1,7 +1,7 @@
-  import React, { useState } from 'react';
-  import { TextField, Button, Box, Typography, Container, Grid } from '@mui/material';
-  import { useNavigate } from 'react-router-dom';
-  import { loginWithEmailAndPassword } from '../firebase/auth';
+import React, { useState } from 'react';
+import { TextField, Button, Box, Typography, Container,Grid } from '@mui/material';
+import { useNavigate } from 'react-router-dom';
+import { loginWithEmailAndPassword, signInWithGoogle, signInWithGithub } from '../firebase/auth';
 
   const SignIn = () => {
     const [email, setEmail] = useState('');
@@ -20,6 +20,24 @@
         } finally {
             setLoading(false);
         }
+    };
+    
+    const handleGoogleSignIn = async () => {  
+      try {
+        await signInWithGoogle();
+        navigate('/');
+      } catch (error) {
+        console.error(error.message);
+      }
+    };
+
+    const handleGithubSignIn = async () => {
+      try {
+        await signInWithGithub();
+        navigate('/');
+      } catch (error) {
+        console.error(error.message);
+      }
     };
 
     return (
@@ -69,6 +87,26 @@
                     {loading ? 'Signing in...' : 'Sign in'}
                   </Button>
                 </form>
+                <Button
+          fullWidth
+          variant="contained"
+          color="secondary"
+          onClick={handleGoogleSignIn}
+          disabled={loading}
+          sx={{ mt: 2 }}
+        >
+          Sign in with Google
+        </Button>
+        <Button
+          fullWidth
+          variant="contained"
+          color="default"
+          onClick={handleGithubSignIn}
+          disabled={loading}
+          sx={{ mt: 2 }}
+        >
+          Sign in with GitHub
+        </Button>
                   <Grid container justifyContent="flex-end" sx={{ mt: 2 }}>
                           <Grid item>
                             <Typography variant="body2" color="textSecondary">

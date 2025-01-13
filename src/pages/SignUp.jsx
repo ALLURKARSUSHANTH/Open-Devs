@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { TextField, Button, Box, Typography, Container,Grid } from '@mui/material';
-import { registerWithEmailAndPassword } from '../firebase/auth';
 import { useNavigate } from 'react-router-dom';
+import { registerWithEmailAndPassword, signInWithGoogle, signInWithGithub } from '../firebase/auth';
 
 const SignUp = () => {
   const [email, setEmail] = useState('');
@@ -29,6 +29,24 @@ const SignUp = () => {
   else{
     alert("Passwords do not match");
 }
+};
+
+const handleGoogleSignIn = async () => {  
+  try {
+    await signInWithGoogle();
+    navigate('/');
+  } catch (error) {
+    console.error(error.message);
+  }
+};
+
+const handleGithubSignIn = async () => {
+  try {
+    await signInWithGithub();
+    navigate('/');
+  } catch (error) {
+    console.error(error.message);
+  }
 };
 
   return (
@@ -87,6 +105,26 @@ const SignUp = () => {
             {loading ? 'Signing up...' : 'Sign up'}
           </Button>
         </form>
+             <Button
+                  fullWidth
+                  variant="contained"
+                  color="secondary"
+                  onClick={handleGoogleSignIn}
+                  disabled={loading}
+                  sx={{ mt: 2 }}
+                >
+                  Sign in with Google
+                </Button>
+                <Button
+                  fullWidth
+                  variant="contained"
+                  color="default"
+                  onClick={handleGithubSignIn}
+                  disabled={loading}
+                  sx={{ mt: 2 }}
+                >
+                  Sign in with GitHub
+                </Button>
           <Grid container justifyContent="flex-end" sx={{ mt: 2 }}>
                   <Grid item>
                     <Typography variant="body2" color="textSecondary">

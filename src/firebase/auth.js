@@ -1,5 +1,6 @@
-import {createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "firebase/auth";
-import { auth} from './firebaseConfig';
+import { auth, githubProvider, googleProvider } from './firebaseConfig';
+import { signInWithEmailAndPassword, signInWithPopup, signOut } from 'firebase/auth';
+
 
 export const registerWithEmailAndPassword = async (email, password) => {
   try {
@@ -20,6 +21,28 @@ export const loginWithEmailAndPassword = async (email, password) => {
     console.error("Error logging in:", error.message);
   }
 };
+
+export const  signInWithGoogle = async () => {
+  try{
+    const result = await signInWithPopup(auth, googleProvider);
+    console.log("User logged in with Google:", result.user);
+    return result.user;
+  } catch (error) {
+    console.error("Error logging in with Google:", error.message);
+  }
+};
+
+export const signInWithGithub = async () => {
+  try{
+    const result = await signInWithPopup(auth, githubProvider);
+    console.log("User logged in with Github:", result.user);
+    return result.user;
+  }
+  catch (error) {
+    console.error("Error logging in with Github:", error.message);
+  } 
+};
+
 // Logout function
 export const logout = async () => {
   try {
