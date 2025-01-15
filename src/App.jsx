@@ -1,28 +1,31 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { onAuthStateChanged } from 'firebase/auth'; // Import onAuthStateChanged from Firebase
-import { auth } from './firebase/firebaseConfig'; // Import Firebase authentication instance
+import { onAuthStateChanged } from 'firebase/auth'; 
+import { auth } from './firebase/firebaseConfig'; 
 import NavBar from './components/NavBar';
 import SignIn from './pages/SignIn';
 import SignUp from './pages/SignUp';
 import Home from './pages/Home';
+import { Provider } from 'react-redux';
+import store from './reduxState/store';
+import Profile from './pages/Profile';
 
 const About = () => <h2>About</h2>;
 const Contact = () => <h2>Contact</h2>;
 
 function App() {
-  const [user, setUser] = useState(null); // Track the user authentication state
+  const [user, setUser] = useState(null);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUser(user); // Update user state when auth state changes
-    });
+      setUser(user); 
+    }); 
 
-    // Cleanup listener when component is unmounted
     return () => unsubscribe();
   }, []);
 
   return (
+    <Provider store={store}>
     <Router>
       {user && <NavBar />}
 
@@ -39,6 +42,10 @@ function App() {
           path="/contact"
           element={user ? <Contact /> : <Navigate to="/signin" />}
         />
+        <Route
+          path="/profile"
+          element={user ? <Profile /> : <Navigate to="/signin" />}
+        />
         
         <Route
           path="/signin"
@@ -50,6 +57,7 @@ function App() {
         />
       </Routes>
     </Router>
+    </Provider>
   );
 }
 
