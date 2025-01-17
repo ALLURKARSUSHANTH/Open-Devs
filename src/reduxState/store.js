@@ -17,3 +17,4 @@ const store = configureStore({
 });
 
 export default store;
+//still working on state management 
