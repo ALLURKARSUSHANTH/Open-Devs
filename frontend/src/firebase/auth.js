@@ -3,12 +3,22 @@ import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signInWithP
 import { setUser, setProfile, setError } from '../reduxState/authSlice';
 import store from '../reduxState/store';
 
+
 // Extract user profile data
 const extractUserProfile = (user) => ({
   displayName: user.displayName || 'User', // Fallback if displayName is missing
   photoURL: user.photoURL || 'https://via.placeholder.com/100', // Fallback image URL
   email: user.email || 'No email available', // Fallback if email is missing
 });
+
+const saveProfileToLocalStorage=(profile)=>{
+  localStorage.setItem('userProfile',JSON.stringify(profile))
+}
+
+const getProfileFromLocalStorage = ()=>{
+  const profile = localStorage.getItem('userProfile');
+  return profile?JSON.parse(profile):null;
+}
 
 // Register user with email and password
 export const registerWithEmailAndPassword = async (email, password) => {
@@ -19,6 +29,7 @@ export const registerWithEmailAndPassword = async (email, password) => {
     // Dispatch actions to store user and profile in Redux
     store.dispatch(setUser(userCredential.user));
     store.dispatch(setProfile(profile));
+    saveProfileToLocalStorage(profile);
 
     console.log("User registered:", userCredential.user);
     return userCredential.user;
@@ -37,6 +48,7 @@ export const loginWithEmailAndPassword = async (email, password) => {
     // Dispatch actions to store user and profile in Redux
     store.dispatch(setUser(userCredential.user));
     store.dispatch(setProfile(profile));
+    saveProfileToLocalStorage(profile);
 
     console.log("User logged in:", userCredential.user);
     return userCredential.user;
@@ -55,6 +67,7 @@ export const signInWithGoogle = async () => {
     // Dispatch actions to store user and profile in Redux
     store.dispatch(setUser(result.user));
     store.dispatch(setProfile(profile));
+    saveProfileToLocalStorage(profile);
 
     console.log("User logged in with Google:", result.user);
     return result.user;
@@ -73,6 +86,7 @@ export const signInWithGithub = async () => {
     // Dispatch actions to store user and profile in Redux
     store.dispatch(setUser(result.user));
     store.dispatch(setProfile(profile));
+    saveProfileToLocalStorage(profile);
 
     console.log("User logged in with Github:", result.user);
     return result.user;
@@ -91,6 +105,8 @@ export const logout = async () => {
     // Clear user and profile from Redux
     store.dispatch(setUser(null));
     store.dispatch(setProfile({ displayName: '', photoURL: '', email: '' }));
+    localStorage.removeItem('userProfile');
+
   } catch (error) {
     console.error("Error logging out:", error.message);
     store.dispatch(setError(error.message));

@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'; 
 import { Typography, Grid, Card, CardContent, CardMedia, Button, Link, CircularProgress } from '@mui/material';
 import axios from 'axios';
-import { useDispatch } from 'react-redux';
-
 const Home = () => {
 
   const [repos, setRepos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [expandedRepos, setExpandedRepos] = useState({}); 
+  const [showPost, setShowPost] = useState(false);
 
   const ACCESS_TOKEN = import.meta.env.VITE_GITHUB_ACCESS_TOKEN;
   const url = 'https://api.github.com/search/repositories?q=stars:%3E10000&sort=stars&order=desc';
@@ -17,6 +18,9 @@ const Home = () => {
     'Accept': 'application/vnd.github.v3+json',
   };
 
+  const handleShowPost = () => {
+    setShowPost(showPost => !showPost);
+  };
   useEffect(() => {
     axios
       .get(url, { headers })
@@ -38,8 +42,6 @@ const Home = () => {
     }
     return description;
   };
-
-  const [expandedRepos, setExpandedRepos] = useState({}); 
 
   const handleToggleDescription = (repoId) => {
     setExpandedRepos((prevState) => ({

@@ -1,25 +1,14 @@
   import React, { useState } from 'react';
-  import { Link, useNavigate } from 'react-router-dom';
+  import { Link } from 'react-router-dom';
   import { AppBar, Box, Button, IconButton, TextField, Toolbar, Typography } from '@mui/material';
   import MenuIcon from '@mui/icons-material/Menu';
-  import { logout } from '../firebase/auth';
 
   const NavBar = () => {
     const [mobileOpen, setMobileOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
-    const navigate = useNavigate();
 
     const handleSearchChange = (e) => {
       setSearchTerm(e.target.value);
-    };
-
-    const handleLogout = async () => {
-      try {
-        await logout();
-        navigate('/signin');
-      } catch (error) {
-        console.error('Logout failed', error);
-      }
     };
 
     const handleDrawerToggle = () => {
@@ -28,9 +17,8 @@
 
     const navLinks = [
       { name: 'Home', to: '/' },
-      { name: 'Contact', to: '/contact' },
-      { name: 'About', to: '/about' },
       { name: 'Profile', to: '/profile' },
+      { name : 'post', to : '/post'}  
     ];
 
     return (
@@ -71,7 +59,6 @@
                   {link.name}
                 </Button>
               ))}
-              <Button onClick={handleLogout}>LogOut</Button>
             </Box>
           </Toolbar>
         </AppBar>
