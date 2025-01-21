@@ -1,6 +1,7 @@
 import React from 'react';
 import { useSelector } from 'react-redux';
-import { Typography, Avatar, Card, CardContent, Grid } from '@mui/material';
+import { Typography, Avatar, Card, CardContent, Grid, Button } from '@mui/material';
+import { logout } from '../firebase/auth';
 
 const Profile = () => {
   // Access the profile data from the Redux store
@@ -10,6 +11,14 @@ const Profile = () => {
   const displayName = profile.displayName || 'User';
   const email = profile.email || 'No email available';
   const photoURL = profile.photoURL || 'https://via.placeholder.com/100'; 
+  const handleLogout = async () => {
+        try {
+          await logout();
+          navigate('/signin');
+        } catch (error) {
+          console.error('Logout failed', error);
+        }
+      };
 
   return (
     <Grid container justifyContent="center" alignItems="center" spacing={2}>
@@ -31,6 +40,8 @@ const Profile = () => {
               <Typography variant="body1" color="text.secondary">
                 {email}
               </Typography>
+              <Button onClick={handleLogout}>LogOut</Button>
+           
             </Grid>
           </CardContent>
         </Card>
