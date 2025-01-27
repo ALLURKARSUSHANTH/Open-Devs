@@ -1,4 +1,3 @@
-//This is just a practice implementation
 import React, { useState } from 'react';
 import axios from 'axios';
 import { TextField, Button, Box, Typography, Stack } from '@mui/material';
@@ -6,10 +5,12 @@ import { TextField, Button, Box, Typography, Stack } from '@mui/material';
 const Post = () => {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
-  const [image, setImage] = useState(null);
+  const [images, setImages] = useState([]); 
+  const [link, setLink] = useState('');
 
   const handleFileChange = (event) => {
-    setImage(event.target.files[0]);
+    const files = event.target.files;
+    setImages([...files]);  
   };
 
   const handleSubmit = async (event) => {
@@ -17,7 +18,11 @@ const Post = () => {
     const formData = new FormData();
     formData.append('title', title);
     formData.append('content', content);
-    if (image) formData.append('image', image);
+    formData.append('link', link);
+
+    images.forEach((image) => {
+      formData.append('images', image);  
+    });
 
     try {
       const response = await axios.post('http://localhost:5000/api/posts', formData, {
@@ -45,28 +50,62 @@ const Post = () => {
             label="Title"
             variant="outlined"
             fullWidth
+            required
             value={title}
             onChange={(e) => setTitle(e.target.value)}
+          />
+          <TextField
+            label="Link to repository"
+            variant="outlined"
+            required
+            fullWidth
+            value={link}
+            onChange={(e) => setLink(e.target.value)}
           />
           <TextField
             label="Content"
             variant="outlined"
             fullWidth
+            required
             multiline
             rows={4}
             value={content}
             onChange={(e) => setContent(e.target.value)}
           />
+
           <Button variant="outlined" component="label">
-            Upload Image
+            Upload Images
             <input
               type="file"
               hidden
               accept="image/*"
+              name="images"  
+              multiple 
               onChange={handleFileChange}
             />
           </Button>
-          {image && <Typography>{image.name}</Typography>}
+
+          {images.length > 0 && (
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="body2">Selected Images:</Typography>
+              <Stack direction="row" spacing={2}>
+                {images.map((image, index) => (
+                  <Box key={index}>
+                    <img
+                      src={URL.createObjectURL(image)}
+                      alt={`preview-${index}`}
+                      style={{
+                        maxWidth: '100%',
+                        maxHeight: '600px',
+                        marginTop : '10px',
+                      }}
+                    />
+                  </Box>
+                ))}
+              </Stack>
+            </Box>
+          )}
+
           <Button type="submit" variant="contained">
             Submit Post
           </Button>
