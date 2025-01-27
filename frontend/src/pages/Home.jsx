@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'; 
 import { Typography, Grid, Card, CardContent, CardMedia, Button, Link, CircularProgress } from '@mui/material';
 import axios from 'axios';
 const Home = () => {
