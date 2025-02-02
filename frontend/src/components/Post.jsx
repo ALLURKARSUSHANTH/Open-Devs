@@ -7,6 +7,8 @@ const Post = () => {
   const [content, setContent] = useState('');
   const [images, setImages] = useState([]); 
   const [link, setLink] = useState('');
+  const [authorId, setAuthorId] = useState('');  
+  const [authorName, setAuthorName] = useState('');  
 
   const handleFileChange = (event) => {
     const files = event.target.files;
@@ -19,6 +21,8 @@ const Post = () => {
     formData.append('title', title);
     formData.append('content', content);
     formData.append('link', link);
+    formData.append('authorId', authorId);  
+    formData.append('authorName', authorName);  
 
     images.forEach((image) => {
       formData.append('images', image);  
@@ -61,6 +65,22 @@ const Post = () => {
             fullWidth
             value={link}
             onChange={(e) => setLink(e.target.value)}
+          />
+          <TextField
+            label="Author ID"
+            variant="outlined"
+            required
+            fullWidth
+            value={authorId}
+            onChange={(e) => setAuthorId(e.target.value)} 
+          />
+          <TextField
+            label="Author Name"
+            variant="outlined"
+            required
+            fullWidth
+            value={authorName}
+            onChange={(e) => setAuthorName(e.target.value)}
           />
           <TextField
             label="Content"

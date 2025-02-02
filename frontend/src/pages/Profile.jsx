@@ -4,10 +4,9 @@ import { Typography, Avatar, Card, CardContent, Grid, Button } from '@mui/materi
 import { logout } from '../firebase/auth';
 
 const Profile = () => {
-  // Access the profile data from the Redux store
+  
   const profile = useSelector((state) => state.auth.profile);
 
-  // Fallback if profile data doesn't exist
   const displayName = profile.displayName || 'User';
   const email = profile.email || 'No email available';
   const photoURL = profile.photoURL || 'https://via.placeholder.com/100'; 
@@ -26,14 +25,13 @@ const Profile = () => {
         <Card sx={{ maxWidth: 345 }}>
           <CardContent>
             <Grid container direction="column" alignItems="center">
-              {/* Avatar (Profile Picture) */}
+
               <Avatar 
                 src={photoURL} 
                 alt={displayName} 
                 sx={{ width: 120, height: 120, marginBottom: 2 }} 
               />
               
-              {/* Name and Email */}
               <Typography variant="h5" component="div" sx={{ marginBottom: 1 }}>
                 {displayName}
               </Typography>
