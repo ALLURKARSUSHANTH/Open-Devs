@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Typography, Grid, Card, CardContent, CardMedia, Button, Link, CircularProgress } from '@mui/material';
+import { Typography, Box, Card, CardContent, CardMedia, Button, Link, CircularProgress, Divider } from '@mui/material';
 import axios from 'axios';
+import GetPosts from '../components/Feed';
 const Home = () => {
 
   const [repos, setRepos] = useState([]);
@@ -8,9 +9,14 @@ const Home = () => {
   const [error, setError] = useState(null);
   const [expandedRepos, setExpandedRepos] = useState({}); 
   const [showPost, setShowPost] = useState(false);
+   const getLast24HoursDate = () => {
+    const date = new Date();
+    date.setHours(date.getHours() - 24); // Adjust to 24 hours ago
+    return date.toISOString();
+  };
 
   const ACCESS_TOKEN = import.meta.env.VITE_GITHUB_ACCESS_TOKEN;
-  const url = 'https://api.github.com/search/repositories?q=stars:%3E10000&sort=stars&order=desc';
+  const url = `https://api.github.com/search/repositories?q=pushed:>=${getLast24HoursDate()}`;
 
   const headers = {
     'Authorization': `token ${ACCESS_TOKEN}`,
@@ -20,6 +26,7 @@ const Home = () => {
   const handleShowPost = () => {
     setShowPost(showPost => !showPost);
   };
+
   useEffect(() => {
     axios
       .get(url, { headers })
@@ -35,7 +42,7 @@ const Home = () => {
   }, []);
 
   const truncateDescription = (description) => {
-    const maxLength = 150; 
+    const maxLength = 50; 
     if (description && description.length > maxLength) {
       return `${description.substring(0, maxLength)}...`;
     }
@@ -50,8 +57,11 @@ const Home = () => {
   };
 
   return (
-    <div>
-      <Typography variant="h4" align="start" gutterBottom  style={{ padding: '20px', fontWeight: 'bold' ,color: '#FF5733'}}>
+
+    <div style={{ padding: '40px' , borderRadius: '3px',color:'white'}}>
+      <GetPosts />
+      <hr style={{color: '#b409ed'}}/>
+      <Typography variant="h6" align="start" gutterBottom  style={{ fontWeight: 'bold' ,color: '#FF5733'}}>
         Popular Repositories :
       </Typography>
 
@@ -68,14 +78,15 @@ const Home = () => {
       )}
 
       {!loading && !error && (
-        <Grid container spacing={4} justifyContent="center">
+      
+        <Box sx={{ display: 'flex', overflowX: 'auto', padding: '10px 0' }}>
           {repos.map((repo) => {
             const isDescriptionExpanded = expandedRepos[repo.id] || false;
             const description = repo.description || 'No description available';
             const truncatedDescription = truncateDescription(description);
 
             return (
-              <Grid item xs={12} sm={6} md={4} lg={2} key={repo.id}>
+              <Box key={repo.id} sx={{ minWidth: 250, margin: '0 10px' }}>
                 <Card>
                   <CardMedia
                     component="img"
@@ -115,10 +126,10 @@ const Home = () => {
                     </Link>
                   </Button>
                 </Card>
-              </Grid>
+              </Box>
             );
           })}
-        </Grid>
+        </Box>
       )}
     </div>
   );

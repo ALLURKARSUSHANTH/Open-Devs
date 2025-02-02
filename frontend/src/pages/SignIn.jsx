@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { TextField, Button, Box, Typography, Container,Grid, useTheme } from '@mui/material';
+import { TextField, Button, Box, Typography, Container,Grid } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { loginWithEmailAndPassword, signInWithGoogle, signInWithGithub } from '../firebase/auth';
 
@@ -8,25 +8,7 @@ import { loginWithEmailAndPassword, signInWithGoogle, signInWithGithub } from '.
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
-    const theme = useTheme();
-    const textFieldStyles = {
-      input: {
-        color: theme.palette.mode === 'dark' ? '#ffffff' : '#000000', // Adjust text color
-      },
-      root: {
-        '& .MuiOutlinedInput-root': {
-          '& fieldset': {
-            borderColor: theme.palette.mode === 'dark' ? '#ffffff' : '#000000', // Adjust border color
-          },
-          '&:hover fieldset': {
-            borderColor: theme.palette.mode === 'dark' ? '#bbbbbb' : '#000000', // Hover border color
-          },
-          '&.Mui-focused fieldset': {
-            borderColor: theme.palette.mode === 'dark' ? '#ffffff' : '#3f51b5', // Focused border color
-          },
-        },
-      },
-    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
@@ -78,7 +60,6 @@ import { loginWithEmailAndPassword, signInWithGoogle, signInWithGithub } from '.
                     margin="normal"
                     required
                     fullWidth
-                    style={textFieldStyles}
                     label="Email Address"
                     autoFocus
                     value={email}
@@ -89,7 +70,6 @@ import { loginWithEmailAndPassword, signInWithGoogle, signInWithGithub } from '.
                     margin="normal"
                     required
                     fullWidth
-                    style={textFieldStyles}
                     label="Password"
                     type="password"
                     value={password}

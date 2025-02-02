@@ -5,6 +5,9 @@
   text-align: center;
 }
 
+body{
+  background-color: #335;
+}
 .logo {
   height: 6em;
   padding: 1.5em;
