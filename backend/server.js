@@ -39,7 +39,7 @@ const db = mongoose.connect('mongodb://localhost:27017/posts', {
 );
 
 //api endpoint to get specific posts
-app.get('/api/postedByAuthor', async (req, res) => {
+app.get('/api/postByAuthor', async (req, res) => {
   const {authorName}  = req.query;
   try{
     if(authorName){

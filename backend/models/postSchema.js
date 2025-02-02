@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const postSchema = new mongoose.Schema({
     title: {
         type: String,
+        required: true
     },
     authorId: {
         type: String,
@@ -14,9 +15,11 @@ const postSchema = new mongoose.Schema({
     },
     link: {
         type: String,
+        required: true
     },
     description: {
         type: String,
+        required: true
     },
     content: {
         type: String,
@@ -24,6 +27,7 @@ const postSchema = new mongoose.Schema({
     },
     images: {
         type: [String],
+        required: true
     },
     timeStamp: {
         type: Date,
