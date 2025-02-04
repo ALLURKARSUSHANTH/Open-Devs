@@ -1,5 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
+import { useDispatch } from 'react-redux';
+import { setUserProfile,clearUserProfile } from '../reduxState/actions/authActions';
 import { onAuthStateChanged } from 'firebase/auth'; 
 import { auth } from '../firebase/firebaseConfig'; 
 import NavBar from './NavBar';
@@ -14,13 +16,23 @@ import Post from '../components/post';
 function AppRoutes() {
   const [user, setUser] = useState(null);
 
+  const dispatch = useDispatch();
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUser(user); 
-    }); 
-
+      setUser(user);
+      if (user) {
+        dispatch(setUserProfile({
+          displayName: user.displayName,
+          email: user.email,
+          photoURL: user.photoURL,
+        }));
+      } else {
+        dispatch(clearUserProfile());
+      }
+    });
     return () => unsubscribe();
-  }, []);
+  }, [dispatch]);
 
   return (
     <Provider store={store}>
