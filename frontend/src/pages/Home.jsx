@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Typography, Box, Card, CardContent, CardMedia, Button, Link, CircularProgress, Divider } from '@mui/material';
+import { Typography, Box, Card, CardContent, CardMedia, Button, Link, CircularProgress } from '@mui/material';
 import axios from 'axios';
 import GetPosts from '../components/Feed';
 const Home = () => {
