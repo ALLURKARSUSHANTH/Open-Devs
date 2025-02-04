@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { AppBar, Box, Button, IconButton, TextField, Toolbar, Typography, FormControlLabel, Switch, List, ListItem, ListItemText, CircularProgress, Avatar } from '@mui/material';
+import { AppBar, Box, Button, IconButton, TextField, Toolbar, Typography, List, ListItem, ListItemText, CircularProgress, Avatar } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import { useTheme } from '../Theme/toggleTheme';
+import { Brightness4TwoTone, Brightness7 } from '@mui/icons-material'; 
+
 
 const NavBar = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -82,12 +84,15 @@ const NavBar = () => {
             sx={{borderRadius: '5px'}}
           />
 
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end', padding: '10px' }}>
-            <FormControlLabel
-              control={<Switch checked={theme === 'dark'} onChange={toggleTheme} />}
-              label="Dark Mode"
-            />
-          </Box>
+<Box sx={{ display: 'flex', justifyContent: 'flex-end', padding: '10px' }}>
+      <IconButton onClick={toggleTheme} color="inherit">
+        {theme === 'dark' ? (
+          <Brightness7 /> 
+        ) : (
+          <Brightness4TwoTone />
+        )}
+      </IconButton>
+    </Box>
 
           {/* Navigation links */}
           <Box sx={{ display: { xs: 'none', sm: 'block' } }}>

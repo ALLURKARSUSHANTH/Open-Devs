@@ -1,6 +1,6 @@
 import React from 'react';
 import { useSelector } from 'react-redux';
-import { Typography, Avatar, Card, CardContent, Grid, Button } from '@mui/material';
+import { Typography, Avatar, Card, CardContent, Grid, Button,Box } from '@mui/material';
 import { logout } from '../firebase/auth';
 import { useNavigate } from 'react-router-dom';
 
@@ -22,8 +22,7 @@ const Profile = () => {
   };
 
   return (
-    <Grid container justifyContent="center" alignItems="center" spacing={2}>
-      <Grid item xs={12} sm={6} md={4}>
+ <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, padding: '20px' }}>
         <Card sx={{ maxWidth: 345 }}>
           <CardContent>
             <Grid container direction="column" alignItems="center">
@@ -45,8 +44,7 @@ const Profile = () => {
             </Grid>
           </CardContent>
         </Card>
-      </Grid>
-    </Grid>
+        </Box>
   );
 };
 

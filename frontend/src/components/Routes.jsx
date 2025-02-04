@@ -1,6 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { useDispatch } from 'react-redux';
+import { Provider,useDispatch } from 'react-redux';
 import { setUserProfile,clearUserProfile } from '../reduxState/actions/authActions';
 import { onAuthStateChanged } from 'firebase/auth'; 
 import { auth } from '../firebase/firebaseConfig'; 
@@ -9,7 +9,6 @@ import SignIn from '../pages/SignIn';
 import SignUp from '../pages/SignUp';
 import Home from '../pages/Home';
 import Profile from '../pages/Profile';
-import { Provider } from 'react-redux';
 import store from '../reduxState/store';
 import Post from '../components/post';
 
