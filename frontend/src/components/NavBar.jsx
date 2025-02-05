@@ -133,8 +133,8 @@ const NavBar = () => {
           position: 'absolute',
           top: 64,
           left: 0,
-          right: 0,
-          backgroundColor: '#fff',
+          right: 400,
+          background: theme === 'dark' ? '#1c1c1c' : 'linear-gradient(145deg, #f3f4f6, #e1e2e5)',
           zIndex: 1300,
         }}
       >
