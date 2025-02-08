@@ -69,8 +69,9 @@ const NavBar = () => {
           >
             <MenuIcon />
           </IconButton>
-          <Typography variant='h6' sx={{ flexGrow: 1 }}>
-            <Link to="/" style={{ fontWeight: 'bold', fontSize: '2rem', color: 'white' }}>
+          <Typography variant='h2' sx={{ flexGrow: 1, fontSize: { xs: '1.5rem', sm: '2rem', md: '2.5rem' } // Adjust font sizes for different screen sizes
+ }}>
+            <Link to="/" style={{ fontWeight: 'bold', color: 'white' }}>
               Open-Devs
             </Link>
           </Typography>
@@ -133,13 +134,15 @@ const NavBar = () => {
           position: 'absolute',
           top: 64,
           left: 0,
-          right: 450,
+          right: { xs: 0, sm: 450 },
+          borderRadius: '8px',
           background: theme === 'dark' ? '#1c1c1c' : 'linear-gradient(145deg, #f3f4f6, #e1e2e5)',
           zIndex: 1300,
         }}
       >
         {navLinks.map((link) => (
-          <Button key={link.name} color="inherit" component={Link} to={link.to} sx={{ width: '100%', textAlign: 'center', padding: 2 }}>
+          <Button key={link.name} color="inherit" component={Link} to={link.to} sx={{ width: '100%', textAlign: 'center', padding: 2 }} 
+          onClick={handleDrawerToggle}>
             {link.name}
           </Button>
         ))}
