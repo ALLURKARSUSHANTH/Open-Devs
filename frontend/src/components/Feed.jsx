@@ -1,118 +1,108 @@
-import React, { useState, useEffect } from 'react';
-import { Box, Card, CardContent, Typography, CardMedia, Button } from '@mui/material';
-import axios from 'axios';
-import { useTheme } from '../Theme/toggleTheme';
+import React, { useState, useEffect } from "react";
+import { Box, Card, CardContent, Typography, Button } from "@mui/material";
+import axios from "axios";
+import { useTheme } from "../Theme/toggleTheme";
+import { getAuth, onAuthStateChanged } from "firebase/auth";
 
 const GetPosts = () => {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const { theme } = useTheme();
+  const [loggedInUserId, setLoggedInUserId] = useState(null);
 
   useEffect(() => {
-    axios
-      .get('http://localhost:5000/api/posts')  
-      .then((response) => {
-        setPosts(response.data); 
-        setLoading(false); 
-      })
-      .catch((error) => {
-        setError('Error fetching posts'); 
-        setLoading(false); 
-      });
+    const auth = getAuth();
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+       setLoggedInUserId(user?.uid || null);
+    });
+
+    return () => unsubscribe(); 
   }, []);
 
-  const [expandedPost, setExpandedPost] = useState(null);
+  useEffect(() => {
+    if (loggedInUserId === null) return;
 
-  const handleExpandClick = (postId) => {
-    setExpandedPost((prevExpandedPost) =>
-      prevExpandedPost === postId ? null : postId
-    );
+    const fetchPosts = async () => {
+      try {
+        const response = await axios.get("http://localhost:5000/posts/getPosts");
+        setPosts(response.data);
+      } catch (err) {
+        setError(err.response?.data?.message || "Error fetching posts");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPosts();
+  }, [loggedInUserId]);
+
+  const handleFollowToggle = async (authorId) => {
+    if (!loggedInUserId) {
+      alert("Please log in to follow users.");
+      return;
+    }
+
+    try {
+      const response = await axios.post(`http://localhost:5000/follow/${authorId}`, {
+        userId: loggedInUserId,
+      });
+
+      setPosts((prevPosts) =>
+        prevPosts.map((post) =>
+          post.author._id === authorId
+            ? { ...post, isFollowing: !post.isFollowing }
+            : post
+        )
+      );
+
+      console.log(response.data.message);
+    } catch (error) {
+      console.error("Error updating follow status:", error);
+      alert(error.response?.data?.message || "Failed to update follow status. Please try again.");
+    }
   };
 
-  if (loading) {
-    return <div>Loading...</div>;  
-  }
-
-  if (error) {
-    return <div>{error}</div>;  
-  }
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div style={{ color: "red" }}>{error}</div>;
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, padding: '20px' }}>
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 3, padding: "20px" }}>
       {posts.map((post) => (
         <Card
-          key={post._id}
+          key={post._id} {...post}
           sx={{
-            display: 'flex',
-            flexDirection: 'column',
-            boxShadow: theme === 'dark' ? '0px 6px 15px rgba(0, 0, 0, 0.3)' : '0px 4px 10px rgba(0, 0, 0, 0.1)',
-            borderRadius: '12px',
-            background: theme === 'dark' ? '#1c1c1c' : 'linear-gradient(145deg, #f3f4f6, #e1e2e5)',
-            transition: 'transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out',
-            '&:hover': {
-              transform: 'translateY(-5px)',
-              boxShadow: theme === 'dark' ? '0px 6px 20px rgba(0, 0, 0, 0.4)' : '0px 6px 15px rgba(0, 0, 0, 0.2)',
+            display: "flex",
+            flexDirection: "column",
+            boxShadow: theme === "dark" ? "0px 6px 15px rgba(0, 0, 0, 0.3)" : "0px 4px 10px rgba(0, 0, 0, 0.1)",
+            borderRadius: "12px",
+            background: theme === "dark" ? "#1c1c1c" : "linear-gradient(145deg, #f3f4f6, #e1e2e5)",
+            transition: "transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out",
+            "&:hover": {
+              transform: "translateY(-5px)",
+              boxShadow: theme === "dark" ? "0px 6px 20px rgba(0, 0, 0, 0.4)" : "0px 6px 15px rgba(0, 0, 0, 0.2)",
             },
             padding: 2,
           }}
         >
-          <CardContent sx={{ padding: '16px' }}>
-            <Typography
-              variant="h6"
-              component="h2"
-              sx={{
-                fontWeight: 'bold',
-                color: theme === 'dark' ? '#ffffff' : '#333',
-                marginBottom: '10px',
-              }}
-            >
-              {post.title}
+          <CardContent sx={{ padding: "16px", position: "relative" }}>
+            <Typography variant="h6" sx={{ fontWeight: "bold", color: theme === "dark" ? "#ffffff" : "#333" }}>
+              {post.author?.displayName || "Unknown Author"}
             </Typography>
-            <Typography
-              color={theme === 'dark' ? 'text.secondary' : 'text.primary'}
-              sx={{ fontSize: '14px' }}
-            >
-              <span style={{ fontWeight: 'bold' }}>Author:</span> {post.authorName}
-              <br />
-              <span style={{ fontWeight: 'bold' }}>Link:</span> <a href={post.link} target="_blank" rel="noopener noreferrer" style={{ color: theme === 'dark' ? '#1d72b8' : '#1d72b8' }}>{post.link}</a>
-            </Typography>
-          </CardContent>
-
-          <CardMedia
-            component="img"
-            src={post.image || 'https://via.placeholder.com/600x300'}
-            alt="Post image"
-            sx={{
-              width: '100%',
-              height: 'auto',
-              objectFit: 'cover',
-              borderTopLeftRadius: '12px',
-              borderTopRightRadius: '12px',
-            }}
-          />
-
-          <CardContent sx={{ padding: '16px' }}>
-            <Typography
-              color={theme === 'dark' ? 'text.secondary' : 'text.primary'}
-              sx={{ fontSize: '14px' }}
-            >
-              <span style={{ fontWeight: 'bold' }}>Content:</span> 
-              {expandedPost === post._id ? (
-                <span>{post.content}</span>
-              ) : (
-                <span>
-                  {post.content.length > 200 ? `${post.content.slice(0, 200)}...` : post.content}
-                </span>
-              )}
+            <Typography color={theme === "dark" ? "text.secondary" : "text.primary"} sx={{ fontSize: "14px" }}>
+              {post.content}
             </Typography>
 
-            {post.content.length > 200 && (
+            {/* Follow Button */}
+            {post.author && post.author._id !== loggedInUserId && (
               <Button
-                sx={{ marginTop: '10px', padding: '6px 16px' }}
-                onClick={() => handleExpandClick(post._id)}
+                variant="contained"
+                color={post.isFollowing ? "error" : "primary"}
+                size="small"
+                sx={{ position: "absolute", top: 10, right: 10 }}
+                onClick={() => handleFollowToggle(post.author._id)}
               >
-                {expandedPost === post._id ? 'Show Less' : 'Show More'}
+                {post.isFollowing ? "Unfollow" : "Follow"}
               </Button>
             )}
           </CardContent>

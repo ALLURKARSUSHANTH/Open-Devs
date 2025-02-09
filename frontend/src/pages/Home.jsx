@@ -11,7 +11,7 @@ const Home = () => {
   const [showPost, setShowPost] = useState(false);
    const getLast24HoursDate = () => {
     const date = new Date();
-    date.setHours(date.getHours() - 24); // Adjust to 24 hours ago
+    date.setHours(date.getHours() - 24);
     return date.toISOString();
   };
 
