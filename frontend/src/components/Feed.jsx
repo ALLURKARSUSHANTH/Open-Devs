@@ -14,54 +14,65 @@ const GetPosts = () => {
   useEffect(() => {
     const auth = getAuth();
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-       setLoggedInUserId(user?.uid || null);
+      const uid = user?.uid;
+       setLoggedInUserId(uid);
     });
 
     return () => unsubscribe(); 
   }, []);
 
   useEffect(() => {
-    if (loggedInUserId === null) return;
-
     const fetchPosts = async () => {
       try {
         const response = await axios.get("http://localhost:5000/posts/getPosts");
-        setPosts(response.data);
+        const userResponse = await axios.get(`http://localhost:5000/users/firebase/${loggedInUserId}`);
+        
+        const followingList = userResponse.data.following; 
+        
+        const updatedPosts = response.data.map((post) => ({
+          ...post,
+          isFollowing: followingList.includes(post.author?._id),
+        }));
+  
+        setPosts(updatedPosts);
       } catch (err) {
         setError(err.response?.data?.message || "Error fetching posts");
       } finally {
         setLoading(false);
       }
     };
-
-    fetchPosts();
+  
+    if (loggedInUserId) fetchPosts();
   }, [loggedInUserId]);
+  
 
   const handleFollowToggle = async (authorId) => {
     if (!loggedInUserId) {
       alert("Please log in to follow users.");
       return;
     }
-
+    console.log("Following/unfollowing user:", authorId);
+    console.log("Logged in user:", loggedInUserId);
     try {
       const response = await axios.post(`http://localhost:5000/follow/${authorId}`, {
         userId: loggedInUserId,
       });
-
+  
       setPosts((prevPosts) =>
         prevPosts.map((post) =>
-          post.author._id === authorId
+          post.author?._id === authorId
             ? { ...post, isFollowing: !post.isFollowing }
             : post
         )
       );
-
+  
       console.log(response.data.message);
     } catch (error) {
       console.error("Error updating follow status:", error);
       alert(error.response?.data?.message || "Failed to update follow status. Please try again.");
     }
   };
+  
 
   if (loading) return <div>Loading...</div>;
   if (error) return <div style={{ color: "red" }}>{error}</div>;
@@ -94,7 +105,7 @@ const GetPosts = () => {
             </Typography>
 
             {/* Follow Button */}
-            {post.author && post.author._id !== loggedInUserId && (
+            {post.author && post.author?._id !== loggedInUserId && (
               <Button
                 variant="contained"
                 color={post.isFollowing ? "error" : "primary"}

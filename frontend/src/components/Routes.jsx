@@ -21,11 +21,13 @@ function AppRoutes() {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser);
       if (firebaseUser) {
+        
         dispatch(setUserProfile({
           displayName: firebaseUser.displayName,
           email: firebaseUser.email,
           photoURL: firebaseUser.photoURL,
         }));
+
         try {
           await axios.post("http://localhost:5000/users/firebase", {
             _id: firebaseUser.uid,

@@ -15,13 +15,14 @@ exports.createPost = async (req, res) => {
     res.status(400).send(error);
   }
 };
+
 exports.getPosts = async (req, res) => {
-    try {
-        const posts = await Post.find()
-        .populate("author", "displayName")
-        .sort({ timeStamp: -1 });
-        res.status(200).send(posts);
-    } catch (error) {
-        res.status(500).send(error);
-    }
+  try {
+      const posts = await Post.find()
+      .populate("author", "displayName _id") 
+      .sort({ timeStamp: -1 });
+      res.status(200).send(posts);
+  } catch (error) {
+      res.status(500).send(error);
+  }
 };
