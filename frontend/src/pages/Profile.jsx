@@ -10,6 +10,7 @@ const Profile = () => {
   const navigate = useNavigate();
   const profile = useSelector((state) => state.auth.profile);
   const [followersCount, setFollowersCount] = useState(0);
+  const [postsCount, setPostsCount] = useState(0);
   const [loggedInUserId, setLoggedInUserId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -32,20 +33,25 @@ const Profile = () => {
   }, []);
 
   useEffect(() => {
-    const fetchFollowerCount = async () => {
+    const fetchCounts = async () => {
       if (!loggedInUserId) return; 
 
       try {
-        const response = await axios.get(`http://localhost:5000/follow/${loggedInUserId}/followers-count`);
-        setFollowersCount(response.data.followersCount);
+        const [followersRes, postsRes] = await Promise.all([
+          axios.get(`http://localhost:5000/follow/${loggedInUserId}/followers-count`),
+          axios.get(`http://localhost:5000/posts/getPostsCount/${loggedInUserId}`)
+        ]);
+
+        setFollowersCount(followersRes.data.followersCount || 0);
+        setPostsCount(postsRes.data.postsCount || 0);
       } catch (err) {
-        setError(err.response?.data?.message || "Error fetching followers count");
+        setError(err.response?.data?.message || "Error fetching data");
       } finally {
         setLoading(false);
       }
     };
 
-    fetchFollowerCount();
+    fetchCounts();
   }, [loggedInUserId]);
 
   const handleLogout = async () => {
@@ -74,10 +80,10 @@ const Profile = () => {
               {email}
             </Typography>
             {loading ? (
-              <Typography variant="body1" color="text.secondary">Loading followers...</Typography>
+              <Typography variant="body1" color="text.secondary">Loading...</Typography>
             ) : (
               <Typography variant="body1" color="text.secondary">
-                Followers: {followersCount}
+                Followers: {followersCount} | Posts: {postsCount}
               </Typography>
             )}
             <Button onClick={handleLogout}>Log Out</Button>
