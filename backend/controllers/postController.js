@@ -8,7 +8,7 @@ exports.createPost = async (req, res) => {
     await post.save();
     const user = await User.findOne({ _id: author });
     user.posts.push(post._id);
-    user.save();
+    await user.save();
     
     res.status(201).send(post);
   } catch (error) {
@@ -24,5 +24,33 @@ exports.getPosts = async (req, res) => {
       res.status(200).send(posts);
   } catch (error) {
       res.status(500).send(error);
+  }
+};
+
+exports.getPostsCount = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const posts= await Posts.findById(id);
+
+    if (!posts) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    return res.status(200).json({ PostsCount: posts.posts.length });
+  } catch (error) {
+    console.error("Error getting followers count:", error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.getPostsCount = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const postsCount = await Post.countDocuments({author:id}); 
+
+    res.status(200).json({ postsCount});
+  } catch (error) {
+    console.error("Error getting posts count:", error);
+    res.status(500).json({ error: error.message });
   }
 };
