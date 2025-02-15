@@ -70,7 +70,32 @@ const GetPosts = () => {
     setIsModalOpen(false);
     setSelectedImages([]);
   };
-
+  const handleFollowToggle = async (authorId) => {
+    if (!loggedInUserId) {
+      alert("Please log in to follow users.");
+      return;
+    }
+  
+    try {
+      const response = await axios.post(`http://localhost:5000/follow/${authorId}`, {
+        userId: loggedInUserId,
+      });
+  
+      setPosts((prevPosts) =>
+        prevPosts.map((post) =>
+          post.author?._id === authorId
+            ? { ...post, isFollowing: !post.isFollowing }
+            : post
+        )
+      );
+  
+      console.log(response.data.message);
+    } catch (error) {
+      console.error("Error updating follow status:", error);
+      alert(error.response?.data?.message || "Failed to update follow status. Please try again.");
+    }
+  };
+  
   if (loading) return <div>Loading...</div>;
   if (error) return <div style={{ color: "red" }}>{error}</div>;
 
@@ -82,6 +107,19 @@ const GetPosts = () => {
             <Typography variant="h6" sx={{ fontWeight: "bold" }}>
               {post.author?.displayName || "Unknown Author"}
             </Typography>
+          {post.author && post.author._id && post.author._id !== loggedInUserId && (
+                <Button
+                  variant="contained"
+                  color={post.isFollowing ? "error" : "primary"}
+                  size="small"
+                  sx={{ marginTop: -2, marginLeft: "auto", display: "block" , borderRadius: '8px'}}
+                  onClick={() => handleFollowToggle(post.author._id)}
+                >
+                  {post.isFollowing ? "Unfollow" : "Follow"}
+                </Button>
+              )}
+
+            
             <Typography>
               {expandedPosts[post._id] || post.content.length <= 50
                 ? post.content
@@ -92,6 +130,7 @@ const GetPosts = () => {
                 {expandedPosts[post._id] ? "See Less" : "See More"}
               </Button>
             )}
+            
             {post.imgUrls.length > 0 && (
               <Box
                 sx={{
@@ -124,7 +163,7 @@ const GetPosts = () => {
                       fontWeight: "bold",
                     }}
                   >
-                    +{post.imgUrls.length - 1}
+                  {post.imgUrls.length - 1}
                   </Box>
                 )}
               </Box>
