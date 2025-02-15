@@ -69,8 +69,7 @@ const NavBar = () => {
           >
             <MenuIcon />
           </IconButton>
-          <Typography variant='h2' sx={{ flexGrow: 1, fontSize: { xs: '1.5rem', sm: '2rem', md: '2.5rem' } // Adjust font sizes for different screen sizes
- }}>
+          <Typography variant='h2' sx={{ flexGrow: 1, fontSize: { xs: '1.5rem', sm: '2rem', md: '2.5rem' } }}>
             <Link to="/" style={{ fontWeight: 'bold', color: 'white' }}>
               Open-Devs
             </Link>
@@ -130,7 +129,7 @@ const NavBar = () => {
 
       <Box
         sx={{
-          display: { xs: mobileOpen ? 'block' : 'none', sm: 'none' },
+          display: { xs : mobileOpen ? 'block' : 'none', sm: 'none' },
           position: 'absolute',
           top: 64,
           left: 0,

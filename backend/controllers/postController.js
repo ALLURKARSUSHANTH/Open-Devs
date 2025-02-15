@@ -1,20 +1,72 @@
 const Post = require('../models/Post');
-const User = require('../models/User'); 
+const User = require('../models/User');
+const axios = require('axios');
+const multer = require('multer');
+require("dotenv").config();
+
+const storage = multer.memoryStorage();
+const upload = multer({ storage });
+
+const IMGBB_API_KEY = process.env.IMGBB_API_KEY;
+
+exports.uploadMiddleware = upload.array("images", 5);
 
 exports.createPost = async (req, res) => {
-  const { content , author} = req.body;
+  const { content, author } = req.body;
+  const files = req.files;
+  console.log("Received files:", req.files);
+  console.log("Received content:", content);
+  console.log("Received author:", author);
+
   try {
-    const post = new Post({content,author});
+    let imgUrls = [];
+
+    if (files && files.length > 0) {
+      const uploadPromises = files.map(async (file) => {
+        const base64Image = file.buffer.toString("base64");
+
+        try {
+          const response = await axios.post(
+            `https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`,
+            new URLSearchParams({ image: base64Image }).toString(),
+            { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
+          );
+
+          console.log("Uploaded image URL:", response.data);
+          return response.data.data.url;
+        } catch (error) {
+          console.error("Error uploading image:", error.response?.data || error.message);
+          return null;
+        }
+      });
+
+      imgUrls = await Promise.all(uploadPromises);
+      imgUrls = imgUrls.filter((url) => url !== null);
+    }
+
+    console.log("Final image URLs:", imgUrls);
+    console.log("IMGBB_API_KEY:", IMGBB_API_KEY);
+
+    // Create new post
+    const post = new Post({ content, author, imgUrls });
     await post.save();
-    const user = await User.findOne({ _id: author });
-    user.posts.push(post._id);
-    await user.save();
-    
-    res.status(201).send(post);
+
+    // Update user with new post ID
+    const user = await User.findById(author);
+    if (user) {
+      user.posts.push(post._id);
+      await user.save();
+    }
+
+    res.status(201).json(post);
   } catch (error) {
-    res.status(400).send(error);
+    console.error("Error creating post:", error);
+    res.status(400).json({ message: "Failed to create post", error: error.message });
   }
 };
+
+
+
 
 exports.getPosts = async (req, res) => {
   try {
@@ -24,22 +76,6 @@ exports.getPosts = async (req, res) => {
       res.status(200).send(posts);
   } catch (error) {
       res.status(500).send(error);
-  }
-};
-
-exports.getPostsCount = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const posts= await Posts.findById(id);
-
-    if (!posts) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    return res.status(200).json({ PostsCount: posts.posts.length });
-  } catch (error) {
-    console.error("Error getting followers count:", error);
-    res.status(500).json({ error: error.message });
   }
 };
 
