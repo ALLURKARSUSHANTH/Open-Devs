@@ -58,7 +58,7 @@ const Home = () => {
 
   return (
 
-    <div style={{ padding: '40px' , borderRadius: '3px',color:'white'}}>
+    <div style={{ padding: '18px' , borderRadius: '3px',color:'white'}}>
       <GetPosts />
       <hr style={{color: '#b409ed'}}/>
       <Typography variant="h6" align="start" gutterBottom  style={{ fontWeight: 'bold' ,color: '#FF5733'}}>
@@ -79,7 +79,7 @@ const Home = () => {
 
       {!loading && !error && (
       
-        <Box sx={{ display: 'flex', overflowX: 'auto', padding: '10px 0' }}>
+        <Box sx={{ display: 'flex', overflowX: 'auto', padding: '8px' }}>
           {repos.map((repo) => {
             const isDescriptionExpanded = expandedRepos[repo.id] || false;
             const description = repo.description || 'No description available';
