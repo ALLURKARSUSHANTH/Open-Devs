@@ -103,11 +103,7 @@ const GetPosts = () => {
     <Box sx={{ display: "flex", flexDirection: "column", gap: 3, padding: "20px" }}>
       {posts.map((post) => (
         <Card key={post._id} sx={{ padding: 2, borderRadius: "12px" }}>
-          <CardContent>
-            <Typography variant="h6" sx={{ fontWeight: "bold" }}>
-              {post.author?.displayName || "Unknown Author"}
-            </Typography>
-          {post.author && post.author._id && post.author._id !== loggedInUserId && (
+           {post.author && post.author._id && post.author._id !== loggedInUserId && (
                 <Button
                   variant="contained"
                   color={post.isFollowing ? "error" : "primary"}
@@ -118,8 +114,10 @@ const GetPosts = () => {
                   {post.isFollowing ? "Unfollow" : "Follow"}
                 </Button>
               )}
-
-            
+          <CardContent>
+            <Typography variant="h6" sx={{ fontWeight: "bold"}}>
+              {post.author?.displayName || "Unknown Author"}
+            </Typography>   
             <Typography>
               {expandedPosts[post._id] || post.content.length <= 50
                 ? post.content

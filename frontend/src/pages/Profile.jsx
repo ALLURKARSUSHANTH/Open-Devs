@@ -123,7 +123,7 @@ const Profile = () => {
   return (
     <Grid container justifyContent="center" alignItems="center" spacing={2} sx={{ padding: 3 }}>
       <Grid item xs={12} sm={8} md={6}>
-        <Card sx={{ borderRadius: 4, boxShadow: 6, background: 'linear-gradient(145deg, #ffffff, #f0f0f0)' }}>
+        <Card sx={{ borderRadius: 4, boxShadow: 6}}>
           <div
             style={{
               height: '150px',
