@@ -65,12 +65,10 @@ exports.createPost = async (req, res) => {
   }
 };
 
-
-
-
 exports.getPosts = async (req, res) => {
+  const { id } = req.params;
   try {
-      const posts = await Post.find()
+      const posts = await Post.find({ author: { $ne: id } })
       .populate("author", "displayName _id") 
       .sort({ timeStamp: -1 });
       res.status(200).send(posts);
