@@ -32,7 +32,7 @@ const GetPosts = () => {
   useEffect(() => {
     const fetchPosts = async () => {
       try {
-        const response = await axios.get("http://localhost:5000/posts/getPosts");
+        const response = await axios.get(`http://localhost:5000/posts/getPosts/${loggedInUserId}`);
         const userResponse = await axios.get(
           `http://localhost:5000/users/firebase/${loggedInUserId}`
         );
@@ -115,7 +115,7 @@ const GetPosts = () => {
                 </Button>
               )}
           <CardContent>
-            <Typography variant="h6" sx={{ fontWeight: "bold"}}>
+            <Typography variant="h6" sx={{ fontWeight: "bo>ld"}}>
               {post.author?.displayName || "Unknown Author"}
             </Typography>   
             <Typography>
@@ -167,7 +167,13 @@ const GetPosts = () => {
               </Box>
             )}
           </CardContent>
+          <Box sx={{ display: "flex", justifyContent: "flex-end", padding: "8px 16px", color: "gray" }}>
+                <Typography variant="caption">
+                  {new Date(post.timeStamp).toLocaleString()}
+                </Typography>
+          </Box>
         </Card>
+        
       ))}
       <Modal open={isModalOpen} onClose={closeModal}>
         <Box sx={{
