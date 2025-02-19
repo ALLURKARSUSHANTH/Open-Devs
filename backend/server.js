@@ -21,6 +21,8 @@ connectDB();
 app.use("/follow", require("./routes/follow"));
 app.use("/posts", require("./routes/postRoutes"));
 app.use("/users", require("./routes/userRoutes"));
+app.use("/connections", require("./routes/connection"));
+
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
