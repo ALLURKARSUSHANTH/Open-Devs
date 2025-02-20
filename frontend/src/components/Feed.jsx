@@ -38,9 +38,12 @@ const GetPosts = () => {
         );
 
         const followingList = userResponse.data.following;
+        const connectionsList = userResponse.data.connections; // Assuming connections are stored in the user object
+
         const updatedPosts = response.data.map((post) => ({
           ...post,
           isFollowing: followingList.includes(post.author?._id),
+          isConnected: connectionsList.includes(post.author?._id), // Add connection status
         }));
 
         setPosts(updatedPosts);
@@ -70,17 +73,18 @@ const GetPosts = () => {
     setIsModalOpen(false);
     setSelectedImages([]);
   };
+
   const handleFollowToggle = async (authorId) => {
     if (!loggedInUserId) {
       alert("Please log in to follow users.");
       return;
     }
-  
+
     try {
       const response = await axios.post(`http://localhost:5000/follow/${authorId}`, {
         userId: loggedInUserId,
       });
-  
+
       setPosts((prevPosts) =>
         prevPosts.map((post) =>
           post.author?._id === authorId
@@ -88,14 +92,45 @@ const GetPosts = () => {
             : post
         )
       );
-  
+
       console.log(response.data.message);
     } catch (error) {
       console.error("Error updating follow status:", error);
       alert(error.response?.data?.message || "Failed to update follow status. Please try again.");
     }
   };
-  
+
+  const handleConnectToggle = async (authorId) => {
+    if (!loggedInUserId) {
+      alert("Please log in to connect with users.");
+      return;
+    }
+
+    try {
+      const response = await axios.post(
+        `http://localhost:5000/connections/connect/${authorId}`,
+        {
+          senderId: loggedInUserId, // Match the backend's expected field name
+        }
+      );
+
+      // Update the UI to reflect the connection request
+      setPosts((prevPosts) =>
+        prevPosts.map((post) =>
+          post.author?._id === authorId
+            ? { ...post, isConnected: true } // Update connection status
+            : post
+        )
+      );
+
+      console.log(response.data.message);
+      alert("Connection request sent successfully!");
+    } catch (error) {
+      console.error("Error creating connection:", error);
+      alert(error.response?.data?.message || "Failed to create connection. Please try again.");
+    }
+  };
+
   if (loading) return <div>Loading...</div>;
   if (error) return <div style={{ color: "red" }}>{error}</div>;
 
@@ -103,21 +138,33 @@ const GetPosts = () => {
     <Box sx={{ display: "flex", flexDirection: "column", gap: 3, padding: "20px" }}>
       {posts.map((post) => (
         <Card key={post._id} sx={{ padding: 2, borderRadius: "12px" }}>
-           {post.author && post.author._id && post.author._id !== loggedInUserId && (
-                <Button
-                  variant="contained"
-                  color={post.isFollowing ? "error" : "primary"}
-                  size="small"
-                  sx={{ marginTop: -2, marginLeft: "auto", display: "block" , borderRadius: '8px'}}
-                  onClick={() => handleFollowToggle(post.author._id)}
-                >
-                  {post.isFollowing ? "Unfollow" : "Follow"}
-                </Button>
-              )}
+          {post.author && post.author._id && post.author._id !== loggedInUserId && (
+            <Box sx={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 1 }}>
+              <Button
+                variant="contained"
+                color={post.isFollowing ? "error" : "primary"}
+                size="small"
+                sx={{ borderRadius: '8px' }}
+                onClick={() => handleFollowToggle(post.author._id)}
+              >
+                {post.isFollowing ? "Unfollow" : "Follow"}
+              </Button>
+              <Button
+                variant="contained"
+                color={post.isConnected ? "success" : "secondary"}
+                size="small"
+                sx={{ borderRadius: '8px' }}
+                onClick={() => handleConnectToggle(post.author._id)}
+                disabled={post.isConnected} // Disable button if already connected
+              >
+                {post.isConnected ? "Connected" : "Connect"}
+              </Button>
+            </Box>
+          )}
           <CardContent>
-            <Typography variant="h6" sx={{ fontWeight: "bold"}}>
+            <Typography variant="h6" sx={{ fontWeight: "bold" }}>
               {post.author?.displayName || "Unknown Author"}
-            </Typography>   
+            </Typography>
             <Typography>
               {expandedPosts[post._id] || post.content.length <= 50
                 ? post.content
@@ -128,7 +175,6 @@ const GetPosts = () => {
                 {expandedPosts[post._id] ? "See Less" : "See More"}
               </Button>
             )}
-            
             {post.imgUrls.length > 0 && (
               <Box
                 sx={{
@@ -161,7 +207,7 @@ const GetPosts = () => {
                       fontWeight: "bold",
                     }}
                   >
-                  {post.imgUrls.length - 1}
+                    {post.imgUrls.length - 1}
                   </Box>
                 )}
               </Box>

@@ -25,6 +25,7 @@ const Profile = () => {
   const profile = useSelector((state) => state.auth.profile);
   const [followersCount, setFollowersCount] = useState(0);
   const [postsCount, setPostsCount] = useState(0);
+  const [connectionsCount, setConnectionsCount] = useState(0);
   const [loggedInUserId, setLoggedInUserId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -36,7 +37,7 @@ const Profile = () => {
   const [email, setEmail] = useState(profile?.email || 'No email available');
   const [mobileNumber, setMobileNumber] = useState(profile?.mobileNumber || '');
   const [photoURL, setPhotoURL] = useState(profile?.photoURL);
-  const [connections, setConnections] = useState(profile?.connections || 150);
+  
 
   useEffect(() => {
     const auth = getAuth();
@@ -64,8 +65,15 @@ const Profile = () => {
         const postsRes = await axios.get(`http://localhost:5000/posts/getPostsCount/${loggedInUserId}`);
         console.log('Posts API Response:', postsRes.data);
 
+        console.log('Fetching connections count...');
+        const connectionsRes = await axios.get(`http://localhost:5000/connections/connections-count/${loggedInUserId}`);
+        console.log('Connections API Response:', connectionsRes.data);
+
+
         setFollowersCount(followersRes.data.followersCount || 0);
         setPostsCount(postsRes.data.postsCount || 0);
+        setConnectionsCount(connectionsRes.data.connectionsCount || 0);
+        
       } catch (err) {
         console.error('Error fetching counts:', err);
         if (err.response) {
@@ -262,7 +270,7 @@ const Profile = () => {
               <Grid container justifyContent="space-around" sx={{ marginTop: 3 }}>
                 <Grid item>
                   <Typography variant="h6" align="center">
-                    {connections}
+                    {connectionsCount}
                   </Typography>
                   <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center' }}>
                     <ConnectionsIcon sx={{ marginRight: 1, color: '#6a11cb' }} /> Connections
