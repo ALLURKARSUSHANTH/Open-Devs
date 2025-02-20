@@ -18,6 +18,7 @@ app.use(express.urlencoded({ limit:'50',extended: true }));
 
 connectDB();
 
+app.use("/mentor", require("./routes/mentorRoutes"));
 app.use("/follow", require("./routes/follow"));
 app.use("/posts", require("./routes/postRoutes"));
 app.use("/users", require("./routes/userRoutes"));
