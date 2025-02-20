@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Box, Card, CardContent, Typography, Button, Modal, IconButton } from "@mui/material";
+import { Box, Card, CardContent, Typography, Button, Modal, IconButton, Avatar, Icon } from "@mui/material";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Navigation, Pagination } from "swiper/modules";
 import "swiper/css";
@@ -9,6 +9,7 @@ import axios from "axios";
 import { useTheme } from "../Theme/toggleTheme";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
 import CloseIcon from "@mui/icons-material/Close";
+import { Stack } from "@mui/system";
 
 const GetPosts = () => {
   const [posts, setPosts] = useState([]);
@@ -115,9 +116,14 @@ const GetPosts = () => {
                 </Button>
               )}
           <CardContent>
-            <Typography variant="h6" sx={{ fontWeight: "bo>ld"}}>
+            <Stack direction="row" spacing={2} alignItems="center">   
+          <IconButton>
+            <Avatar src={post.author?.profilePicture} alt="Author" /> 
+            </IconButton>
+            <Typography variant="h6" sx={{ fontWeight: "bold"}}>
               {post.author?.displayName || "Unknown Author"}
-            </Typography>   
+            </Typography> 
+            </Stack> 
             <Typography>
               {expandedPosts[post._id] || post.content.length <= 50
                 ? post.content

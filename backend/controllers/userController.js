@@ -1,11 +1,11 @@
 const User = require('../models/User');
 
 exports.createOrGetUser = async (req, res) => {
-  const { _id, email, displayName } = req.body;
+  const { _id, email, displayName,photoURL} = req.body;
   try {
     let user = await User.findOne({ _id }); 
     if (!user) {
-      user = new User({ _id, email, displayName });
+      user = new User({ _id, email, displayName,photoURL : photoURL || "" });
       await user.save();
     }
     return res.status(200).json(user);

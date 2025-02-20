@@ -55,6 +55,7 @@ const NavBar = () => {
     { name: 'Home', to: '/' },
     { name: 'Profile', to: '/profile' },
     { name: 'Post', to: '/post' },
+    { name: 'Mentoring', to: '/mentoring' },
   ];
 
   return (
@@ -64,7 +65,7 @@ const NavBar = () => {
           <IconButton
             edge='start'
             aria-label='menu'
-            sx={{ mr: 2, display: { sm: 'none' } }}
+            sx={{ mr: 2 ,display: { sm: 'none' } }}
             onClick={handleDrawerToggle}
           >
             <MenuIcon />
@@ -84,15 +85,15 @@ const NavBar = () => {
             sx={{borderRadius: '5px'}}
           />
 
-<Box sx={{ display: 'flex', justifyContent: 'flex-end', padding: '10px' }}>
-      <IconButton onClick={toggleTheme} color="inherit">
-        {theme === 'dark' ? (
-          <Brightness7 /> 
-        ) : (
-          <Brightness4TwoTone />
-        )}
-      </IconButton>
-    </Box>
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', padding: '10px' }}>
+                <IconButton onClick={toggleTheme} color="inherit">
+                  {theme === 'dark' ? (
+                    <Brightness7 /> 
+                  ) : (
+                    <Brightness4TwoTone />
+                  )}
+                </IconButton>
+          </Box>
 
           {/* Navigation links */}
           <Box sx={{ display: { xs: 'none', sm: 'block' } }}>

@@ -55,6 +55,7 @@ exports.createPost = async (req, res) => {
     const user = await User.findById(author);
     if (user) {
       user.posts.push(post._id);
+      user.points += 10;
       await user.save();
     }
 
