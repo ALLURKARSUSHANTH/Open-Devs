@@ -10,17 +10,21 @@ exports.sendConnectionRequest = async (req, res) => {
     console.log("Sender ID:", senderId);
     console.log("Target User ID:", targetUserId);
 
+    // Validate senderId and targetUserId
     if (!senderId || !targetUserId) {
       return res.status(400).json({ message: "Missing sender ID or target user ID" });
     }
 
+    // Prevent users from sending requests to themselves
     if (senderId === targetUserId) {
       return res.status(400).json({ message: "You cannot send a connection request to yourself" });
     }
 
+    // Find sender and target user in the database
     const sender = await User.findById(senderId);
     const targetUser = await User.findById(targetUserId);
 
+    // Validate sender and target user existence
     if (!sender) {
       console.log("Sender not found:", senderId);
       return res.status(404).json({ message: "Sender not found" });
@@ -30,6 +34,7 @@ exports.sendConnectionRequest = async (req, res) => {
       return res.status(404).json({ message: "Target user not found" });
     }
 
+    // Check if a connection request has already been sent
     const isRequestSent = targetUser.connectionRequests.includes(senderId);
 
     if (isRequestSent) {
