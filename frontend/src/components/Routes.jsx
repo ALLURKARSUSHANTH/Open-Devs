@@ -34,7 +34,7 @@ function AppRoutes() {
             _id: firebaseUser.uid,
             displayName: firebaseUser.displayName || "User",
             email: firebaseUser.email,
-            profilePicture: firebaseUser.photoURL || "",
+            photoURL: firebaseUser.photoURL || "",
           });
         } catch (error) {
           console.error("Failed to save user to backend:", error.response?.data || error.message);

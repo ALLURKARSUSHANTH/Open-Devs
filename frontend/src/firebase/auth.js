@@ -10,6 +10,7 @@ const saveUserToBackend = async (user) => {
       _id: user?.uid,
       email: user?.email,
       displayName: user?.displayName || "", 
+      photoURL: user?.photoURL || "",
     });
     console.log("User data sent to backend:", user);
   } catch (error) {

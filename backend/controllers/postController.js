@@ -70,7 +70,7 @@ exports.getPosts = async (req, res) => {
   const { id } = req.params;
   try {
       const posts = await Post.find({ author: { $ne: id } })
-      .populate("author", "displayName _id") 
+      .populate("author", "displayName _id photoURL") 
       .sort({ timeStamp: -1 });
       res.status(200).send(posts);
   } catch (error) {
