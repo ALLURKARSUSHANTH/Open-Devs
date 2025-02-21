@@ -14,6 +14,24 @@ exports.createOrGetUser = async (req, res) => {
   }
 };
 
+exports.updateProfile = async (req, res) => {
+  const { displayName, photoURL, skills } = req.body;
+  try {
+    const user = await User.findById(req.params.firebaseUid);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    user.displayName = displayName || user.displayName;
+    user.photoURL = photoURL || user.photoURL;
+    user.skills = skills || user.skills;
+    await user.save();
+    return res.json(user);
+  }
+  catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+};
+
 exports.getUserByFirebaseUid = async (req, res) => {
   try {
     const user = await User.findById(req.params.firebaseUid);

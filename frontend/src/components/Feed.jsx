@@ -118,7 +118,7 @@ const GetPosts = () => {
           <CardContent>
             <Stack direction="row" spacing={2} alignItems="center">   
           <IconButton>
-            <Avatar src={post.author?.profilePicture} alt="Author" /> 
+            <Avatar src={post.author?.photoURL} alt="Author" /> 
             </IconButton>
             <Typography variant="h6" sx={{ fontWeight: "bold"}}>
               {post.author?.displayName || "Unknown Author"}
