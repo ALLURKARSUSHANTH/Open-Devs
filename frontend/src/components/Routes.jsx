@@ -11,6 +11,7 @@ import Home from '../pages/Home';
 import Profile from '../pages/Profile';
 import Post from '../components/Post';
 import axios from 'axios';
+import Mentoring from '../pages/Mentoring';
 
 function AppRoutes() {
   const [user, setUser] = useState(null);
@@ -33,7 +34,7 @@ function AppRoutes() {
             _id: firebaseUser.uid,
             displayName: firebaseUser.displayName || "User",
             email: firebaseUser.email,
-            profilePicture: firebaseUser.photoURL || "",
+            photoURL: firebaseUser.photoURL || "",
           });
         } catch (error) {
           console.error("Failed to save user to backend:", error.response?.data || error.message);
@@ -63,8 +64,12 @@ function AppRoutes() {
           path="/post"
           element={user ? <Post /> : <Navigate to="/signin" />}
         />
-        
-        
+
+        <Route
+          path="/mentoring"
+          element={user ? <Mentoring/> : <Navigate to="/signin" />}
+        />
+
         <Route
           path="/signin"
           element={!user ? <SignIn /> : <Navigate to="/" />}
