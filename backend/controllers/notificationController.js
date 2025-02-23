@@ -8,7 +8,7 @@ exports.getNotifications = async (req, res) => {
 
     const notifications = await Notification.find({ userId, isRead: false })
       .sort({ createdAt: -1 })
-      .populate('senderId', 'username');
+      .populate('senderId', 'displayName');
       console.log("User ID:", userId);
       console.log("Notifications:", notifications);
     res.status(200).json(notifications);
