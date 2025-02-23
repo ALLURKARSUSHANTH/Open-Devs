@@ -146,6 +146,7 @@ const NavBar = () => {
     { name: 'Home', to: '/' },
     { name: 'Profile', to: '/profile' },
     { name: 'Post', to: '/post' },
+    { name: 'Mentoring', to: '/mentoring' },
   ];
 
   return (

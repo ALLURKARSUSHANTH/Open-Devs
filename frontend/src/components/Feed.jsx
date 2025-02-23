@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Box, Card, CardContent, Typography, Button, Modal, IconButton } from "@mui/material";
+import { Box, Card, CardContent, Typography, Button, Modal, IconButton, Avatar, Icon } from "@mui/material";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Navigation, Pagination } from "swiper/modules";
 import "swiper/css";
@@ -9,6 +9,7 @@ import axios from "axios";
 import { useTheme } from "../Theme/toggleTheme";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
 import CloseIcon from "@mui/icons-material/Close";
+import { Stack } from "@mui/system";
 
 const GetPosts = () => {
   const [posts, setPosts] = useState([]);
@@ -32,7 +33,7 @@ const GetPosts = () => {
   useEffect(() => {
     const fetchPosts = async () => {
       try {
-        const response = await axios.get("http://localhost:5000/posts/getPosts");
+        const response = await axios.get(`http://localhost:5000/posts/getPosts/${loggedInUserId}`);
         const userResponse = await axios.get(
           `http://localhost:5000/users/firebase/${loggedInUserId}`
         );
@@ -162,9 +163,9 @@ const GetPosts = () => {
             </Box>
           )}
           <CardContent>
-            <Typography variant="h6" sx={{ fontWeight: "bold" }}>
+            <Typography variant="h6" sx={{ fontWeight: "bold"}}>
               {post.author?.displayName || "Unknown Author"}
-            </Typography>
+            </Typography>   
             <Typography>
               {expandedPosts[post._id] || post.content.length <= 50
                 ? post.content
@@ -213,7 +214,13 @@ const GetPosts = () => {
               </Box>
             )}
           </CardContent>
+          <Box sx={{ display: "flex", justifyContent: "flex-end", padding: "8px 16px", color: "gray" }}>
+                <Typography variant="caption">
+                  {new Date(post.timeStamp).toLocaleString()}
+                </Typography>
+          </Box>
         </Card>
+        
       ))}
       <Modal open={isModalOpen} onClose={closeModal}>
         <Box sx={{
@@ -236,7 +243,7 @@ const GetPosts = () => {
           <Swiper modules={[Navigation, Pagination]} navigation pagination={{ clickable: true }} style={{ width: "80%", height: "100%" }}>
             {selectedImages.map((imgUrl, index) => (
               <SwiperSlide key={index}>
-                <img src={imgUrl} alt={`Slide ${index + 1}`} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+                <img src={imgUrl} alt={Slide `${index + 1}`} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
               </SwiperSlide>
             ))}
           </Swiper>
