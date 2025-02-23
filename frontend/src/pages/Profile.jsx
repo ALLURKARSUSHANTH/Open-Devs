@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
+import { Notifications as NotificationsIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
 import axios from 'axios';
@@ -25,7 +26,10 @@ const Profile = () => {
   const profile = useSelector((state) => state.auth.profile);
   const [followersCount, setFollowersCount] = useState(0);
   const [postsCount, setPostsCount] = useState(0);
+  const [connectionsCount, setConnectionsCount] = useState(0);
   const [loggedInUserId, setLoggedInUserId] = useState(null);
+  const [notificationCount, setNotificationCount] = useState(0);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -36,7 +40,7 @@ const Profile = () => {
   const [email, setEmail] = useState(profile?.email || 'No email available');
   const [mobileNumber, setMobileNumber] = useState(profile?.mobileNumber || '');
   const [photoURL, setPhotoURL] = useState(profile?.photoURL);
-  const [connections, setConnections] = useState(profile?.connections || 150);
+
 
   useEffect(() => {
     const auth = getAuth();
@@ -64,8 +68,15 @@ const Profile = () => {
         const postsRes = await axios.get(`http://localhost:5000/posts/getPostsCount/${loggedInUserId}`);
         console.log('Posts API Response:', postsRes.data);
 
+        console.log('Fetching connections count...');
+        const connectionsRes = await axios.get(`http://localhost:5000/connections/connections-count/${loggedInUserId}`);
+        console.log('Connections API Response:', connectionsRes.data);
+
+
         setFollowersCount(followersRes.data.followersCount || 0);
         setPostsCount(postsRes.data.postsCount || 0);
+        setConnectionsCount(connectionsRes.data.connectionsCount || 0);
+
       } catch (err) {
         console.error('Error fetching counts:', err);
         if (err.response) {
@@ -97,6 +108,21 @@ const Profile = () => {
     setIsEditing(false);
   };
 
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      try {
+        const response = await axios.get(`http://localhost:5000/notifications/${loggedInUserId}`);
+        setNotificationCount(response.data.count); // Assuming the API returns a count
+      } catch (err) {
+        console.error('Error fetching notifications:', err);
+      }
+    };
+
+    if (loggedInUserId) {
+      fetchNotifications();
+    }
+  }, [loggedInUserId]);
+
   const handlePhotoUpload = (event) => {
     const file = event.target.files[0];
     if (file) {
@@ -104,7 +130,7 @@ const Profile = () => {
       reader.onloadend = () => {
         setPhotoURL(reader.result);
       };
-      reader.readAsDataURL(file); 
+      reader.readAsDataURL(file);
     }
   };
 
@@ -123,7 +149,7 @@ const Profile = () => {
   return (
     <Grid container justifyContent="center" alignItems="center" spacing={2} sx={{ padding: 3 }}>
       <Grid item xs={12} sm={8} md={6}>
-        <Card sx={{ borderRadius: 4, boxShadow: 6}}>
+        <Card sx={{ borderRadius: 4, boxShadow: 6 }}>
           <div
             style={{
               height: '150px',
@@ -134,6 +160,7 @@ const Profile = () => {
           />
 
           <CardContent>
+            
             <Grid container direction="column" alignItems="center" spacing={2}>
               <Avatar
                 src={photoURL}
@@ -262,7 +289,7 @@ const Profile = () => {
               <Grid container justifyContent="space-around" sx={{ marginTop: 3 }}>
                 <Grid item>
                   <Typography variant="h6" align="center">
-                    {connections}
+                    {connectionsCount}
                   </Typography>
                   <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center' }}>
                     <ConnectionsIcon sx={{ marginRight: 1, color: '#6a11cb' }} /> Connections

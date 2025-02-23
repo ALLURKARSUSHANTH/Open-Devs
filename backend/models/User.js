@@ -11,6 +11,8 @@ const UserSchema = new mongoose.Schema({
   skills : [{ type: String }],
   followers: [{ type: String, ref: 'User' }],
   following: [{ type: String, ref: 'User' }],
+  connections:[{type: String,ref: 'User'}],
+  connectionRequests: [{ type: String, ref: 'User' }],
   posts: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Post' }]
 });
 
