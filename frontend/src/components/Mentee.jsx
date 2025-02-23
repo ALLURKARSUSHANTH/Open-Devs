@@ -21,7 +21,7 @@ const Mentee = () => {
 
   useEffect(() => {
     const fetchMentors = async () => {
-      if (!loggedInUserId) return; // Prevents unnecessary API calls
+      if (!loggedInUserId) return;
 
       try {
         setLoading(true);
@@ -35,8 +35,7 @@ const Mentee = () => {
     };
 
     fetchMentors();
-  }, [loggedInUserId]); // Runs only when `loggedInUserId` updates
-
+  }, [loggedInUserId]); 
 
   const requestMentorship = async (mentorId) => {
     try {
@@ -48,6 +47,22 @@ const Mentee = () => {
       });
   
       alert("Mentorship request sent successfully!");
+      console.log("Response:", response.data);
+    } catch (err) {
+      console.error("Failed to send mentorship request:", err.response?.data || err);
+      alert(err.response?.data?.error || "Failed to send mentorship request");
+    }
+  };
+  const viewMentor = async (mentorId) => {
+    try {
+      console.log("Viewing mentor:", { mentorId, menteeId: loggedInUserId });
+  
+      const response = await axios.get("http://localhost:5000/mentor/mentors", {
+        mentorId,
+        menteeId: loggedInUserId,
+      });
+  
+      alert("This feature will be available soon!");
       console.log("Response:", response.data);
     } catch (err) {
       console.error("Failed to send mentorship request:", err.response?.data || err);
@@ -68,13 +83,26 @@ const Mentee = () => {
       <List>
         {mentors.map((mentor) => (
           <ListItem key={mentor._id} divider>
-            <Avatar src={mentor._id?.photoURL || ''} />
+            <Avatar src={mentor._id?.photoURL || ''} 
+            sx={{ bgcolor: 'primary.main', color: 'primary.contrastText', marginRight: 2 }}
+            />
             <ListItemText
               primary={mentor._id?.displayName || 'Unknown Mentor'}
               secondary={mentor._id?.email || 'No email provided'}
             />
-            <Button variant="contained" color="primary" size='small' onClick={() => requestMentorship(mentor._id)}>
-              Request Mentorship
+            <Button
+              variant="contained"
+              color="primary"
+              size="small"
+              onClick={() => {
+                if (mentor.mentees.includes(loggedInUserId)) {
+                  viewMentor(mentor._id); // View mentor details if already a mentee
+                } else {
+                  requestMentorship(mentor._id); // Request mentorship if not a mentee
+                }
+              }}
+            >
+              {mentor.mentees.includes(loggedInUserId) ? "Your Mentor" : "Request Mentorship"}
             </Button>
           </ListItem>
         ))}
