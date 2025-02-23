@@ -82,35 +82,28 @@ exports.rejectConnectionRequest = async (req, res) => {
     const { userId } = req.body; // ID of the user rejecting the request
     const senderId = req.params.senderId; // ID of the user who sent the request
 
-    // Validate userId and senderId
     if (!userId || !senderId) {
       return res.status(400).json({ message: "Missing user ID or sender ID" });
     }
 
-    // Find the user rejecting the request
     const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Check if the sender's ID is in the user's connectionRequests array
     const isRequestPending = user.connectionRequests.includes(senderId);
     if (!isRequestPending) {
       return res.status(400).json({ message: "No pending connection request from this user" });
     }
 
-    // Remove the sender's ID from the user's connectionRequests array
     user.connectionRequests = user.connectionRequests.filter(
       (id) => id.toString() !== senderId
     );
 
-    // Save the updated user document
     await user.save();
 
-    // Remove the corresponding notification
     await Notification.deleteMany({ userId: userId, senderId: senderId });
 
-    // Send a success response
     res.status(200).json({ message: "Connection request rejected successfully" });
   } catch (error) {
     console.error("Error rejecting connection request:", error);
