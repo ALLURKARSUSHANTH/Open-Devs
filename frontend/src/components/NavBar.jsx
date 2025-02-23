@@ -20,13 +20,15 @@ import {
 import MenuIcon from '@mui/icons-material/Menu';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import { useTheme } from '../Theme/toggleTheme';
+import { getAuth, onAuthStateChanged } from "firebase/auth";
 import { Brightness4TwoTone, Brightness7 } from '@mui/icons-material';
 
-const NavBar = ({ currentUserId }) => {
+const NavBar = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [repos, setRepos] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [loggedInUserId, setLoggedInUserId] = useState(null);
   const [error, setError] = useState(null);
   const { theme, toggleTheme } = useTheme();
   const [notificationCount, setNotificationCount] = useState(0);
@@ -34,6 +36,15 @@ const NavBar = ({ currentUserId }) => {
   const [anchorEl, setAnchorEl] = useState(null); // For notification dropdown
 
   // Fetch repositories from GitHub API
+  useEffect(() => {
+    const auth = getAuth();
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      setLoggedInUserId(user?.uid);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
   const fetchRepos = async (query) => {
     if (query === '') return;
     setLoading(true);
@@ -58,7 +69,7 @@ const NavBar = ({ currentUserId }) => {
   // Fetch notifications for the current user
   const fetchNotifications = async () => {
     try {
-      const response = await fetch(`http://localhost:5000/notifications/notifications/${currentUserId}/ `);
+      const response = await fetch(`http://localhost:5000/notifications/notifications/${loggedInUserId} `);
       const data = await response.json();
       setNotifications(data);
       setNotificationCount(data.length); // Update notification count
@@ -73,7 +84,7 @@ const NavBar = ({ currentUserId }) => {
       const response = await fetch(`/notifications/accept-request/${senderId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: currentUserId }),
+        body: JSON.stringify({ userId: loggedInuserId }),
       });
       if (response.ok) {
         fetchNotifications(); // Refresh notifications
@@ -89,7 +100,7 @@ const NavBar = ({ currentUserId }) => {
       const response = await fetch(`/notifications/reject-request/${senderId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: currentUserId }),
+        body: JSON.stringify({ userId: loggedInuserId }),
       });
       if (response.ok) {
         fetchNotifications(); // Refresh notifications
@@ -117,10 +128,10 @@ const NavBar = ({ currentUserId }) => {
 
   // Fetch notifications on component mount
   useEffect(() => {
-    if (currentUserId) {
+    if (loggedInUserId) {
       fetchNotifications();
     }
-  }, [currentUserId]);
+  }, [loggedInUserId]);
 
   // Fetch repositories when search term changes
   useEffect(() => {
@@ -186,7 +197,7 @@ const NavBar = ({ currentUserId }) => {
               {notifications.length > 0 ? (
                 notifications.map((notification) => (
                   <MenuItem key={notification._id}>
-                    <ListItemText primary={`${notification.senderId.username} sent you a connection request.`} />
+                    <ListItemText primary={`${notification.senderId.displayName} sent you a connection request.`} />
                     <Button onClick={() => handleAcceptRequest(notification.senderId._id)}>Accept</Button>
                     <Button onClick={() => handleRejectRequest(notification.senderId._id)}>Reject</Button>
                   </MenuItem>
