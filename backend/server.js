@@ -22,6 +22,7 @@ app.use("/follow", require("./routes/follow"));
 app.use("/posts", require("./routes/postRoutes"));
 app.use("/users", require("./routes/userRoutes"));
 app.use("/connections", require("./routes/connection"));
+app.use("/notifications", require("./routes/notification"));
 
 
 const PORT = process.env.PORT || 5000;
