@@ -78,6 +78,10 @@ const NavBar = () => {
     { name: 'Mentoring', to: '/mentoring' },
   ];
 
+  const handleMobileMenuToggle = () => {
+    setMobileOpen(!mobileOpen);
+  };
+
   return (
     <div>
       <AppBar position="sticky">
@@ -86,7 +90,7 @@ const NavBar = () => {
             edge="start"
             aria-label="menu"
             sx={{ mr: 2, display: { sm: 'none' } }}
-            onClick={() => setMobileOpen(!mobileOpen)}
+            onClick={handleMobileMenuToggle} // Toggle mobile menu
           >
             <MenuIcon />
           </IconButton>
@@ -105,14 +109,15 @@ const NavBar = () => {
             sx={{ borderRadius: '5px' }}
           />
 
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end'}}>
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
             <IconButton onClick={toggleTheme} color="inherit">
               {theme === 'dark' ? <Brightness7 /> : <Brightness4TwoTone />}
             </IconButton>
-            
+
             {loggedInUserId && <Notifications loggedInUserId={loggedInUserId} />}
           </Box>
 
+          {/* Desktop Nav Links */}
           <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
             {navLinks.map((link) => (
               <Button key={link.name} color="inherit" component={Link} to={link.to} sx={{ marginLeft: 2 }}>
@@ -122,6 +127,34 @@ const NavBar = () => {
           </Box>
         </Toolbar>
       </AppBar>
+
+      {/* Mobile Nav Links */}
+      <Box
+        sx={{
+          display: { xs: mobileOpen ? 'block' : 'none', sm: 'none' },
+          position: 'absolute',
+          top: 64,
+          left: 0,
+          right: 0,
+          background: theme === 'dark' ? '#1c1c1c' : 'linear-gradient(145deg, #f3f4f6, #e1e2e5)',
+          zIndex: 1300,
+          borderRadius: '8px',
+          padding: 2,
+        }}
+      >
+        {navLinks.map((link) => (
+          <Button
+            key={link.name}
+            color="inherit"
+            component={Link}
+            to={link.to}
+            sx={{ width: '100%', textAlign: 'center', padding: 2 }}
+            onClick={handleMobileMenuToggle} // Close mobile menu on link click
+          >
+            {link.name}
+          </Button>
+        ))}
+      </Box>
 
       {/* Search Results */}
       {searchTerm && (
