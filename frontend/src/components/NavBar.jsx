@@ -1,31 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import {
-  AppBar,
-  Box,
-  Button,
-  TextField,
-  Toolbar,
-  Badge,
-  IconButton,
-  Typography,
-  List,
-  ListItem,
-  ListItemText,
-  CircularProgress,
-  Avatar,
-  Menu,
-  MenuItem,
-  Fade,
-  Divider,
-  Tooltip,
-} from '@mui/material';
+import { AppBar, Box, Button, TextField, Toolbar, IconButton, Typography, CircularProgress } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
-import NotificationsIcon from '@mui/icons-material/Notifications';
-import CheckIcon from '@mui/icons-material/Check'; // Tick mark
-import CloseIcon from '@mui/icons-material/Close'; // Cross mark
 import { useTheme } from '../Theme/toggleTheme';
-import { getAuth, onAuthStateChanged } from 'firebase/auth';
+import { getAuth, onAuthStateChanged } from "firebase/auth";
 import { Brightness4TwoTone, Brightness7 } from '@mui/icons-material';
 import Notifications from './Notifications';
 import SearchResults from './searchResults';
@@ -40,20 +18,6 @@ const NavBar = () => {
   const [error, setError] = useState(null);
   const [showAllResults, setShowAllResults] = useState(false); // State to toggle showing all results
   const { theme, toggleTheme } = useTheme();
-  const [notificationCount, setNotificationCount] = useState(0);
-  const [notifications, setNotifications] = useState([]);
-  const [anchorEl, setAnchorEl] = useState(null); // For notification dropdown
-  const [processing, setProcessing] = useState(false); // To show loading state
-
-  // Fetch repositories from GitHub API
-  useEffect(() => {
-    const auth = getAuth();
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setLoggedInUserId(user?.uid);
-    });
-
-    return () => unsubscribe();
-  }, []);
 
   const fetchRepos = async (query) => {
     if (query === '') return;
@@ -92,70 +56,20 @@ const NavBar = () => {
     }
   };
 
-  const fetchNotifications = async () => {
-    try {
-      const response = await fetch(`http://localhost:5000/notifications/notifications/${loggedInUserId}`);
-      const data = await response.json();
-      setNotifications(data);
-      setNotificationCount(data.length);
-    } catch (err) {
-      console.error('Failed to fetch notifications:', err);
-    }
-  };
-
-  const handleNotificationClick = (event) => {
-    setAnchorEl(event.currentTarget);
-    fetchNotifications();
-  };
-
-  const handleNotificationClose = () => {
-    setAnchorEl(null);
-  };
-
-  // Handle accept connection request
-  const handleAcceptRequest = async (senderId) => {
-    setProcessing(true);
-    try {
-      const response = await fetch(`http://localhost:5000/notifications/accept-request/${senderId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: loggedInUserId }),
-      });
-      if (response.ok) {
-        fetchNotifications(); // Refresh notifications
-      }
-    } catch (error) {
-      console.error('Error accepting request:', error);
-    } finally {
-      setProcessing(false);
-    }
-  };
-
-  // Handle reject connection request
-  const handleRejectRequest = async (senderId) => {
-    setProcessing(true);
-    try {
-      const response = await fetch(`http://localhost:5000/notifications/reject-request/${senderId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: loggedInUserId }),
-      });
-      if (response.ok) {
-        fetchNotifications(); // Refresh notifications
-      }
-    } catch (error) {
-      console.error('Error rejecting request:', error);
-    } finally {
-      setProcessing(false);
-    }
-  };
-
-  // Handle search input change
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
     fetchRepos(e.target.value);  // Fetch repos on search term change
     fetchUsers(e.target.value);  // Fetch users on search term change
   };
+
+  useEffect(() => {
+    const auth = getAuth();
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      setLoggedInUserId(user?.uid);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const navLinks = [
     { name: 'Home', to: '/' },
@@ -200,56 +114,7 @@ const NavBar = () => {
               {theme === 'dark' ? <Brightness7 /> : <Brightness4TwoTone />}
             </IconButton>
 
-            {/* Notification Bell Icon */}
-            <IconButton color="inherit" onClick={handleNotificationClick}>
-              <Badge badgeContent={notificationCount} color="error">
-                <NotificationsIcon />
-              </Badge>
-            </IconButton>
-
-            {/* Notification Dropdown */}
-            <Menu
-              anchorEl={anchorEl}
-              open={Boolean(anchorEl)}
-              onClose={handleNotificationClose}
-              TransitionComponent={Fade} // Add fade animation
-              sx={{ mt: 5 }}
-            >
-              {notifications.length > 0 ? (
-                notifications.map((notification) => (
-                  <MenuItem key={notification._id} sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                    <Avatar src={notification.senderId.profilePicture} alt={notification.senderId.displayName} />
-                    <ListItemText primary={`${notification.senderId.displayName} sent you a connection request.`} />
-                    <Box sx={{ display: 'flex', gap: 1 }}>
-                      <Tooltip title="Accept">
-                        <IconButton
-                          color="primary"
-                          onClick={() => handleAcceptRequest(notification.senderId._id)}
-                          disabled={processing}
-                        >
-                          {processing ? <CircularProgress size={24} /> : <CheckIcon />}
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Reject">
-                        <IconButton
-                          color="error"
-                          onClick={() => handleRejectRequest(notification.senderId._id)}
-                          disabled={processing}
-                        >
-                          {processing ? <CircularProgress size={24} /> : <CloseIcon />}
-                        </IconButton>
-                      </Tooltip>
-                    </Box>
-                  </MenuItem>
-                ))
-              ) : (
-                <MenuItem>No new notifications</MenuItem>
-              )}
-              <Divider />
-              <MenuItem onClick={handleNotificationClose} sx={{ justifyContent: 'center' }}>
-                Close
-              </MenuItem>
-            </Menu>
+            {loggedInUserId && <Notifications loggedInUserId={loggedInUserId} />}
           </Box>
 
           {/* Desktop Nav Links */}
