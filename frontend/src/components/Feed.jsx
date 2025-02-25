@@ -111,15 +111,14 @@ const GetPosts = () => {
       const response = await axios.post(
         `http://localhost:5000/connections/connect/${authorId}`,
         {
-          senderId: loggedInUserId, // Match the backend's expected field name
+          senderId: loggedInUserId, 
         }
       );
 
-      // Update the UI to reflect the connection request
       setPosts((prevPosts) =>
         prevPosts.map((post) =>
           post.author?._id === authorId
-            ? { ...post, isConnected: true } // Update connection status
+            ? { ...post, isConnected: true } 
             : post
         )
       );
@@ -141,6 +140,7 @@ const GetPosts = () => {
         <Card key={post._id} sx={{ padding: 2, borderRadius: "12px" }}>
           {post.author && post.author._id && post.author._id !== loggedInUserId && (
             <Box sx={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 1 }}>
+              <Stack direction={"row"} spacing={1}>
               <Button
                 variant="contained"
                 color={post.isFollowing ? "error" : "primary"}
@@ -150,22 +150,33 @@ const GetPosts = () => {
               >
                 {post.isFollowing ? "Unfollow" : "Follow"}
               </Button>
+              {!post.isConnected  && (
               <Button
                 variant="contained"
                 color={post.isConnected ? "success" : "secondary"}
                 size="small"
                 sx={{ borderRadius: '8px' }}
                 onClick={() => handleConnectToggle(post.author._id)}
-                disabled={post.isConnected} // Disable button if already connected
+                disabled={post.isConnected} 
               >
-                {post.isConnected ? "Connected" : "Connect"}
+             Connect
               </Button>
+              )}
+              </Stack>
             </Box>
           )}
           <CardContent>
-            <Typography variant="h6" sx={{ fontWeight: "bold"}}>
-              {post.author?.displayName || "Unknown Author"}
-            </Typography>   
+
+          <Stack direction={"row"} spacing={1}>
+              <Avatar
+                src={post.author?.photoURL}
+                alt={post.author?.displayName[0]}
+                sx={{ width: 50, height: 50, cursor: "pointer" }}
+              />
+              <Typography variant="h6" sx={{ fontWeight: "bold"}}>
+                {post.author?.displayName || "Unknown Author"}
+              </Typography>
+            </Stack>   
             <Typography>
               {expandedPosts[post._id] || post.content.length <= 50
                 ? post.content
@@ -240,10 +251,10 @@ const GetPosts = () => {
           <IconButton onClick={closeModal} sx={{ position: "absolute", top: 10, right: 10, color: "#fff" }}>
             <CloseIcon />
           </IconButton>
-          <Swiper modules={[Navigation, Pagination]} navigation pagination={{ clickable: true }} style={{ width: "80%", height: "100%" }}>
+          <Swiper modules={[Navigation, Pagination]} navigation pagination={{ clickable: true}} style={{ width: "80%", height: "100%" }}>
             {selectedImages.map((imgUrl, index) => (
               <SwiperSlide key={index}>
-                <img src={imgUrl} alt={Slide `${index + 1}`} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+                <img src={imgUrl} alt={`${index + 1}`} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
               </SwiperSlide>
             ))}
           </Swiper>

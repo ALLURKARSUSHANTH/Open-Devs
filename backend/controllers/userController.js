@@ -32,6 +32,16 @@ exports.updateProfile = async (req, res) => {
   }
 };
 
+exports.searchUser = async (req, res) => {
+  const { query } = req.params;
+  try {
+    const users = await User.find({ displayName: { $regex: query, $options: "i" } });
+    return res.json(users);
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+};
+
 exports.getUserByFirebaseUid = async (req, res) => {
   try {
     const user = await User.findById(req.params.firebaseUid);
