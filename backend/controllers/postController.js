@@ -89,3 +89,70 @@ exports.getPostsCount = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+exports.getLikes = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const post = await Post.findById(id);
+    if (!post) {
+      return res.status(404).json({ message: "Post not found" });
+    }
+    res.status(200).json({ likes: post.likes });
+  } catch (error) {
+    console.error("Error fetching likes:", error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.pushLikes = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { likes } = req.body;
+    const post = await Post.findById(id);
+    if (!post) {
+      return res.status(404).json({ message: "Post not found" });
+    }
+    post.likes += likes;
+    await post.save();
+    res.status(200).json({ message: "Likes updated successfully", likes: post.likes });
+  } catch (error) {
+    console.error("Error updating likes:", error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.addComment = async (req, res) => {
+  try {
+    const { id } = req.params; 
+    const { user, text } = req.body; 
+
+    const post = await Post.findById(id);
+    if (!post) {
+      return res.status(404).json({ message: "Post not found" });
+    }
+
+    const newComment = { user, text, timeStamp: new Date() };
+    post.comments.push(newComment);
+    await post.save();
+
+    res.status(201).json({ message: "Comment added successfully", comment: newComment });
+  } catch (error) {
+    console.error("Error adding comment:", error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.getComments = async (req, res) => {
+  try {
+    const { id } = req.params; 
+    const post = await Post.findById(id).populate("comments.user", "displayName photoURL");
+
+    if (!post) {
+      return res.status(404).json({ message: "Post not found" });
+    }
+
+    res.status(200).json(post.comments);
+  } catch (error) {
+    console.error("Error fetching comments:", error);
+    res.status(500).json({ error: error.message });
+  }
+};
