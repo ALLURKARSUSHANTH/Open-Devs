@@ -58,7 +58,7 @@ const Home = () => {
 
   return (
 
-    <div style={{ padding: '18px' , borderRadius: '3px',color:'white'}}>
+    <div style={{ borderRadius: '3px',color:'white'}} >
       <GetPosts />
       <hr style={{color: '#b409ed'}}/>
       <Typography variant="h6" align="start" gutterBottom  style={{ fontWeight: 'bold' ,color: '#FF5733'}}>
