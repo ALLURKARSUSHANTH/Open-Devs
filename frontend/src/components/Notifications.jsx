@@ -1,11 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import { Button, Menu, MenuItem, ListItemText, Badge, IconButton } from '@mui/material';
+import {
+  Button,
+  Menu,
+  MenuItem,
+  ListItemText,
+  Badge,
+  IconButton,
+  Avatar,
+  Tooltip,
+  Box,
+  CircularProgress,
+  Divider,
+  Fade,
+} from '@mui/material';
 import NotificationsIcon from '@mui/icons-material/Notifications';
+import CheckIcon from '@mui/icons-material/Check'; // Tick mark
+import CloseIcon from '@mui/icons-material/Close'; // Cross mark
 
 const Notifications = ({ loggedInUserId }) => {
   const [notificationCount, setNotificationCount] = useState(0);
   const [notifications, setNotifications] = useState([]);
   const [anchorEl, setAnchorEl] = useState(null);
+  const [processing, setProcessing] = useState(false); // To manage loading state
 
   // Fetch notifications for the current user
   const fetchNotifications = async () => {
@@ -35,6 +51,7 @@ const Notifications = ({ loggedInUserId }) => {
   };
 
   const handleAcceptRequest = async (senderId) => {
+    setProcessing(true);
     try {
       const response = await fetch(`http://localhost:5000/notifications/accept-request/${senderId}`, {
         method: 'POST',
@@ -46,10 +63,13 @@ const Notifications = ({ loggedInUserId }) => {
       }
     } catch (error) {
       console.error('Error accepting request:', error);
+    } finally {
+      setProcessing(false);
     }
   };
 
   const handleRejectRequest = async (senderId) => {
+    setProcessing(true);
     try {
       const response = await fetch(`http://localhost:5000/notifications/reject-request/${senderId}`, {
         method: 'POST',
@@ -61,6 +81,8 @@ const Notifications = ({ loggedInUserId }) => {
       }
     } catch (error) {
       console.error('Error rejecting request:', error);
+    } finally {
+      setProcessing(false);
     }
   };
 
@@ -78,19 +100,43 @@ const Notifications = ({ loggedInUserId }) => {
         anchorEl={anchorEl}
         open={Boolean(anchorEl)}
         onClose={handleNotificationClose}
+        TransitionComponent={Fade} // Add fade animation
         sx={{ mt: 5 }}
       >
         {notifications.length > 0 ? (
           notifications.map((notification) => (
-            <MenuItem key={notification._id}>
+            <MenuItem key={notification._id} sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Avatar src={notification.senderId.profilePicture} alt={notification.senderId.displayName} />
               <ListItemText primary={`${notification.senderId.displayName} sent you a connection request.`} />
-              <Button onClick={() => handleAcceptRequest(notification.senderId._id)}>Accept</Button>
-              <Button onClick={() => handleRejectRequest(notification.senderId._id)}>Reject</Button>
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <Tooltip title="Accept">
+                  <IconButton
+                    color="primary"
+                    onClick={() => handleAcceptRequest(notification.senderId._id)}
+                    disabled={processing}
+                  >
+                    {processing ? <CircularProgress size={24} /> : <CheckIcon />}
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title="Reject">
+                  <IconButton
+                    color="error"
+                    onClick={() => handleRejectRequest(notification.senderId._id)}
+                    disabled={processing}
+                  >
+                    {processing ? <CircularProgress size={24} /> : <CloseIcon />}
+                  </IconButton>
+                </Tooltip>
+              </Box>
             </MenuItem>
           ))
         ) : (
           <MenuItem>No new notifications</MenuItem>
         )}
+        <Divider />
+        <MenuItem onClick={handleNotificationClose} sx={{ justifyContent: 'center' }}>
+          Close
+        </MenuItem>
       </Menu>
     </>
   );
