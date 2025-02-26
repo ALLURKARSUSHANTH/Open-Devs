@@ -21,56 +21,9 @@ import {
   Favorite as FollowersIcon,
   PhotoLibrary as PostsIcon,
 } from '@mui/icons-material';
+import FollowersList from '../components/FollowersList'; // Import FollowersList
+import ConnectionsList from '../components/ConnectionsList'; // Import ConnectionsList
 
-// FollowersList Component
-const FollowersList = ({ followers, open, onClose }) => {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-
-  if (!open) return null;
-
-  return (
-    <Modal open={open} onClose={onClose}>
-      <Box
-        sx={{
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          width: 400,
-          bgcolor: 'background.paper',
-          boxShadow: 24,
-          p: 4,
-          borderRadius: 2,
-        }}
-      >
-        <Typography variant="h6" component="h2" sx={{ mb: 2 }}>
-          Followers
-        </Typography>
-        {loading ? (
-          <Typography>Loading...</Typography>
-        ) : error ? (
-          <Typography color="error">{error}</Typography>
-        ) : followers.length === 0 ? (
-          <Typography>No followers found.</Typography>
-        ) : (
-          <Grid container spacing={2}>
-            {followers.map((follower) => (
-              <Grid item key={follower.id} xs={12}>
-                <Card sx={{ display: 'flex', alignItems: 'center', p: 1 }}>
-                  <Avatar src={follower.photoURL} alt={follower.displayName} sx={{ mr: 2 }} />
-                  <Typography variant="body1">{follower.displayName}</Typography>
-                </Card>
-              </Grid>
-            ))}
-          </Grid>
-        )}
-      </Box>
-    </Modal>
-  );
-};
-
-// Main Profile Component
 const Profile = () => {
   const navigate = useNavigate();
   const profile = useSelector((state) => state.auth.profile);
@@ -82,10 +35,11 @@ const Profile = () => {
   const [email, setEmail] = useState(profile?.email || 'No email available');
   const [mobileNumber, setMobileNumber] = useState(profile?.mobileNumber || '');
   const [photoURL, setPhotoURL] = useState(profile?.photoURL || 'https://via.placeholder.com/100');
-  const [followers, setFollowers] = useState([]); 
-  const [connections, setConnections] = useState([]);
+  const [followers, setFollowers] = useState([]);
   const [posts, setPosts] = useState([]);
+  const [connections, setConnections] = useState([]);
   const [followersModalOpen, setFollowersModalOpen] = useState(false);
+  const [connectionsModalOpen, setConnectionsModalOpen] = useState(false);
 
   useEffect(() => {
     const auth = getAuth();
@@ -101,32 +55,29 @@ const Profile = () => {
   }, []);
 
   useEffect(() => {
-    const fetchCounts = async () => {
+    const fetchData = async () => {
       if (!loggedInUserId) return;
 
       try {
-        // Fetch followers list
-        const followersRes = await axios.get(`http://localhost:5000/follow/followers/${loggedInUserId}`);
+        // Fetch followers, posts, and connections in parallel
+        const [followersRes, postsRes, connectionsRes] = await Promise.all([
+          axios.get(`http://localhost:5000/follow/followers/${loggedInUserId}`),
+          axios.get(`http://localhost:5000/posts/getposts/${loggedInUserId}`),
+          axios.get(`http://localhost:5000/connections/connections/${loggedInUserId}`),
+        ]);
+
         setFollowers(followersRes.data.followers || []);
-
-        // Fetch posts count
-        const postsRes = await axios.get(`http://localhost:5000/posts/getposts/${loggedInUserId}`);
-        console.log('Posts API Response:', postsRes.data);
         setPosts(postsRes.data.length || []);
-
-        // Fetch connections count
-        const connectionsRes = await axios.get(`http://localhost:5000/connections/connections/${loggedInUserId}`);
         setConnections(connectionsRes.data.connections || []);
-
       } catch (err) {
-        console.error('Error fetching counts:', err);
+        console.error('Error fetching data:', err);
         setError('Failed to fetch data.');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchCounts();
+    fetchData();
   }, [loggedInUserId]);
 
   const handleLogout = async () => {
@@ -160,6 +111,14 @@ const Profile = () => {
 
   const handleCloseFollowersModal = () => {
     setFollowersModalOpen(false);
+  };
+
+  const handleOpenConnectionsModal = () => {
+    setConnectionsModalOpen(true);
+  };
+
+  const handleCloseConnectionsModal = () => {
+    setConnectionsModalOpen(false);
   };
 
   if (loading) {
@@ -303,10 +262,20 @@ const Profile = () => {
 
               <Grid container justifyContent="space-around" sx={{ marginTop: 3 }}>
                 <Grid item>
-                  <Typography variant="h6" align="center">
+                  <Typography
+                    variant="h6"
+                    align="center"
+                    onClick={handleOpenConnectionsModal}
+                    sx={{ cursor: 'pointer' }}
+                  >
                     {connections.length}
                   </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center' }}>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}
+                    onClick={handleOpenConnectionsModal}
+                  >
                     <ConnectionsIcon sx={{ marginRight: 1, color: '#6a11cb' }} /> Connections
                   </Typography>
                 </Grid>
@@ -317,7 +286,7 @@ const Profile = () => {
                     onClick={handleOpenFollowersModal}
                     sx={{ cursor: 'pointer' }}
                   >
-                    {followers.length} {/* Use followers.length instead of followersCount */}
+                    {followers.length}
                   </Typography>
                   <Typography
                     variant="body2"
@@ -339,9 +308,15 @@ const Profile = () => {
               </Grid>
 
               <FollowersList
-                followers={followers} // Pass followers array as a prop
+                followers={followers}
                 open={followersModalOpen}
                 onClose={handleCloseFollowersModal}
+              />
+
+              <ConnectionsList
+                connections={connections}
+                open={connectionsModalOpen}
+                onClose={handleCloseConnectionsModal}
               />
 
               <Grid container justifyContent="center" spacing={2} sx={{ marginTop: 3 }}>
@@ -369,4 +344,5 @@ const Profile = () => {
     </Grid>
   );
 };
+
 export default Profile;
