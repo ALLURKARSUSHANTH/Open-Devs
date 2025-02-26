@@ -47,23 +47,6 @@ exports.sendConnectionRequest = async (req, res) => {
   }
 };
 
-// Get the number of connections (followers) for a user
-exports.getConnectionsCount = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const user = await User.findById(id);
-
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    return res.status(200).json({ connectionsCount: user.connections.length });
-  } catch (error) {
-    console.error("Error getting connections count:", error);
-    res.status(500).json({ error: error.message });
-  }
-};
-
 exports.getConnections = async (req, res) => {
   try {
     const { userId } = req.params;
@@ -72,9 +55,6 @@ exports.getConnections = async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
-
-    // Finding mutual connections (who are both followers & following)
-    
 
     return res.status(200).json({ connections: user.connections });
   } catch (error) {
