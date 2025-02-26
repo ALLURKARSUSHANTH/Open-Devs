@@ -4,7 +4,6 @@ const { sendConnectionRequest, getConnectionsCount , getConnections } = require(
 
 // Define routes
 router.post("/connect/:id", sendConnectionRequest);
-router.get("/connections-count/:id", getConnectionsCount);
 router.get("/connections/:userId", getConnections);
 
 module.exports = router;

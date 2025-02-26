@@ -78,17 +78,6 @@ exports.getPosts = async (req, res) => {
   }
 };
 
-exports.getPostsCount = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const postsCount = await Post.countDocuments({author:id}); 
-
-    res.status(200).json({ postsCount});
-  } catch (error) {
-    console.error("Error getting posts count:", error);
-    res.status(500).json({ error: error.message });
-  }
-};
 exports.getLikes = async (req, res) => {
   try {
     const { id } = req.params;

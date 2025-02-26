@@ -23,28 +23,9 @@ import {
 } from '@mui/icons-material';
 
 // FollowersList Component
-const FollowersList = ({ userId, open, onClose }) => {
-  const [followers, setFollowers] = useState([]);
-  const [loading, setLoading] = useState(true);
+const FollowersList = ({ followers, open, onClose }) => {
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-
-  useEffect(() => {
-    if (!userId || !open) return;
-
-    const fetchFollowers = async () => {
-      try {
-        const response = await axios.get(`http://localhost:5000/follow/${userId}/followers`);
-        setFollowers(response.data.followers || []);
-      } catch (err) {
-        console.error('Error fetching followers:', err);
-        setError('Failed to fetch followers.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchFollowers();
-  }, [userId, open]);
 
   if (!open) return null;
 
@@ -93,9 +74,6 @@ const FollowersList = ({ userId, open, onClose }) => {
 const Profile = () => {
   const navigate = useNavigate();
   const profile = useSelector((state) => state.auth.profile);
-  const [followersCount, setFollowersCount] = useState(0);
-  const [postsCount, setPostsCount] = useState(0);
-  const [connectionsCount, setConnectionsCount] = useState(0);
   const [loggedInUserId, setLoggedInUserId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -104,6 +82,9 @@ const Profile = () => {
   const [email, setEmail] = useState(profile?.email || 'No email available');
   const [mobileNumber, setMobileNumber] = useState(profile?.mobileNumber || '');
   const [photoURL, setPhotoURL] = useState(profile?.photoURL || 'https://via.placeholder.com/100');
+  const [followers, setFollowers] = useState([]); 
+  const [connections, setConnections] = useState([]);
+  const [posts, setPosts] = useState([]);
   const [followersModalOpen, setFollowersModalOpen] = useState(false);
 
   useEffect(() => {
@@ -124,13 +105,19 @@ const Profile = () => {
       if (!loggedInUserId) return;
 
       try {
-        const followersRes = await axios.get(`http://localhost:5000/follow/${loggedInUserId}/followers-count`);
-        const postsRes = await axios.get(`http://localhost:5000/posts/getPostsCount/${loggedInUserId}`);
-        const connectionsRes = await axios.get(`http://localhost:5000/connections/connections-count/${loggedInUserId}`);
+        // Fetch followers list
+        const followersRes = await axios.get(`http://localhost:5000/follow/followers/${loggedInUserId}`);
+        setFollowers(followersRes.data.followers || []);
 
-        setFollowersCount(followersRes.data.followersCount || 0);
-        setPostsCount(postsRes.data.postsCount || 0);
-        setConnectionsCount(connectionsRes.data.connectionsCount || 0);
+        // Fetch posts count
+        const postsRes = await axios.get(`http://localhost:5000/posts/getposts/${loggedInUserId}`);
+        console.log('Posts API Response:', postsRes.data);
+        setPosts(postsRes.data.length || []);
+
+        // Fetch connections count
+        const connectionsRes = await axios.get(`http://localhost:5000/connections/connections/${loggedInUserId}`);
+        setConnections(connectionsRes.data.connections || []);
+
       } catch (err) {
         console.error('Error fetching counts:', err);
         setError('Failed to fetch data.');
@@ -317,7 +304,7 @@ const Profile = () => {
               <Grid container justifyContent="space-around" sx={{ marginTop: 3 }}>
                 <Grid item>
                   <Typography variant="h6" align="center">
-                    {connectionsCount}
+                    {connections.length}
                   </Typography>
                   <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center' }}>
                     <ConnectionsIcon sx={{ marginRight: 1, color: '#6a11cb' }} /> Connections
@@ -330,7 +317,7 @@ const Profile = () => {
                     onClick={handleOpenFollowersModal}
                     sx={{ cursor: 'pointer' }}
                   >
-                    {followersCount}
+                    {followers.length} {/* Use followers.length instead of followersCount */}
                   </Typography>
                   <Typography
                     variant="body2"
@@ -343,7 +330,7 @@ const Profile = () => {
                 </Grid>
                 <Grid item>
                   <Typography variant="h6" align="center">
-                    {postsCount}
+                    {posts}
                   </Typography>
                   <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center' }}>
                     <PostsIcon sx={{ marginRight: 1, color: '#4caf50' }} /> Posts
@@ -352,7 +339,7 @@ const Profile = () => {
               </Grid>
 
               <FollowersList
-                userId={loggedInUserId}
+                followers={followers} // Pass followers array as a prop
                 open={followersModalOpen}
                 onClose={handleCloseFollowersModal}
               />
@@ -382,5 +369,4 @@ const Profile = () => {
     </Grid>
   );
 };
-
 export default Profile;
