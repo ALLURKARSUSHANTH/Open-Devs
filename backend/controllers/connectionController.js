@@ -63,3 +63,22 @@ exports.getConnectionsCount = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+exports.getConnections = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const user = await User.findById(userId).select("connections").populate("connections", "name displayName photoURL");
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Finding mutual connections (who are both followers & following)
+    
+
+    return res.status(200).json({ connections: user.connections });
+  } catch (error) {
+    console.error("Error getting connections:", error);
+    res.status(500).json({ message: "Failed to fetch connections" });
+  }
+};

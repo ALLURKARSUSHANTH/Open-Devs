@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
-import { Notifications as NotificationsIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
 import axios from 'axios';
@@ -13,6 +12,8 @@ import {
   Button,
   TextField,
   IconButton,
+  Modal,
+  Box,
 } from '@mui/material';
 import { logout } from '../firebase/auth';
 import {
@@ -21,6 +22,74 @@ import {
   PhotoLibrary as PostsIcon,
 } from '@mui/icons-material';
 
+// FollowersList Component
+const FollowersList = ({ userId, open, onClose }) => {
+  const [followers, setFollowers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (!userId || !open) return;
+
+    const fetchFollowers = async () => {
+      try {
+        const response = await axios.get(`http://localhost:5000/follow/${userId}/followers`);
+        setFollowers(response.data.followers || []);
+      } catch (err) {
+        console.error('Error fetching followers:', err);
+        setError('Failed to fetch followers.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchFollowers();
+  }, [userId, open]);
+
+  if (!open) return null;
+
+  return (
+    <Modal open={open} onClose={onClose}>
+      <Box
+        sx={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          width: 400,
+          bgcolor: 'background.paper',
+          boxShadow: 24,
+          p: 4,
+          borderRadius: 2,
+        }}
+      >
+        <Typography variant="h6" component="h2" sx={{ mb: 2 }}>
+          Followers
+        </Typography>
+        {loading ? (
+          <Typography>Loading...</Typography>
+        ) : error ? (
+          <Typography color="error">{error}</Typography>
+        ) : followers.length === 0 ? (
+          <Typography>No followers found.</Typography>
+        ) : (
+          <Grid container spacing={2}>
+            {followers.map((follower) => (
+              <Grid item key={follower.id} xs={12}>
+                <Card sx={{ display: 'flex', alignItems: 'center', p: 1 }}>
+                  <Avatar src={follower.photoURL} alt={follower.displayName} sx={{ mr: 2 }} />
+                  <Typography variant="body1">{follower.displayName}</Typography>
+                </Card>
+              </Grid>
+            ))}
+          </Grid>
+        )}
+      </Box>
+    </Modal>
+  );
+};
+
+// Main Profile Component
 const Profile = () => {
   const navigate = useNavigate();
   const profile = useSelector((state) => state.auth.profile);
@@ -28,19 +97,14 @@ const Profile = () => {
   const [postsCount, setPostsCount] = useState(0);
   const [connectionsCount, setConnectionsCount] = useState(0);
   const [loggedInUserId, setLoggedInUserId] = useState(null);
-  const [notificationCount, setNotificationCount] = useState(0);
-  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
-
-  // State for editable fields
   const [isEditing, setIsEditing] = useState(false);
   const [displayName, setDisplayName] = useState(profile?.displayName || 'User');
   const [email, setEmail] = useState(profile?.email || 'No email available');
   const [mobileNumber, setMobileNumber] = useState(profile?.mobileNumber || '');
-  const [photoURL, setPhotoURL] = useState(profile?.photoURL);
-
+  const [photoURL, setPhotoURL] = useState(profile?.photoURL || 'https://via.placeholder.com/100');
+  const [followersModalOpen, setFollowersModalOpen] = useState(false);
 
   useEffect(() => {
     const auth = getAuth();
@@ -60,32 +124,16 @@ const Profile = () => {
       if (!loggedInUserId) return;
 
       try {
-        console.log('Fetching followers count...');
-        const followersRes = await axios.get(`http://localhost:5000/follow/${loggedInUserId}/followers-count `);
-        console.log('Followers API Response:', followersRes.data);
-
-        console.log('Fetching posts count...');
+        const followersRes = await axios.get(`http://localhost:5000/follow/${loggedInUserId}/followers-count`);
         const postsRes = await axios.get(`http://localhost:5000/posts/getPostsCount/${loggedInUserId}`);
-        console.log('Posts API Response:', postsRes.data);
-
-        console.log('Fetching connections count...');
         const connectionsRes = await axios.get(`http://localhost:5000/connections/connections-count/${loggedInUserId}`);
-        console.log('Connections API Response:', connectionsRes.data);
-
 
         setFollowersCount(followersRes.data.followersCount || 0);
         setPostsCount(postsRes.data.postsCount || 0);
         setConnectionsCount(connectionsRes.data.connectionsCount || 0);
-
       } catch (err) {
         console.error('Error fetching counts:', err);
-        if (err.response) {
-          setError(`Error: ${err.response.status} - ${err.response.data.message || 'Unknown error'}`);
-        } else if (err.request) {
-          setError('Network error: Could not connect to the server.');
-        } else {
-          setError('Error: Could not send request.');
-        }
+        setError('Failed to fetch data.');
       } finally {
         setLoading(false);
       }
@@ -108,21 +156,6 @@ const Profile = () => {
     setIsEditing(false);
   };
 
-  useEffect(() => {
-    const fetchNotifications = async () => {
-      try {
-        const response = await axios.get(`http://localhost:5000/notifications/${loggedInUserId}`);
-        setNotificationCount(response.data.count); // Assuming the API returns a count
-      } catch (err) {
-        console.error('Error fetching notifications:', err);
-      }
-    };
-
-    if (loggedInUserId) {
-      fetchNotifications();
-    }
-  }, [loggedInUserId]);
-
   const handlePhotoUpload = (event) => {
     const file = event.target.files[0];
     if (file) {
@@ -132,6 +165,14 @@ const Profile = () => {
       };
       reader.readAsDataURL(file);
     }
+  };
+
+  const handleOpenFollowersModal = () => {
+    setFollowersModalOpen(true);
+  };
+
+  const handleCloseFollowersModal = () => {
+    setFollowersModalOpen(false);
   };
 
   if (loading) {
@@ -160,7 +201,6 @@ const Profile = () => {
           />
 
           <CardContent>
-            
             <Grid container direction="column" alignItems="center" spacing={2}>
               <Avatar
                 src={photoURL}
@@ -174,10 +214,8 @@ const Profile = () => {
                 }}
               />
 
-              {/* Editable Fields */}
               {isEditing ? (
                 <Grid container direction="column" spacing={2} sx={{ width: '100%', marginTop: 2, paddingLeft: 2 }}>
-                  {/* Full Name Field */}
                   <Grid item>
                     <TextField
                       label="Full Name"
@@ -187,8 +225,6 @@ const Profile = () => {
                       margin="normal"
                     />
                   </Grid>
-
-                  {/* Email Field */}
                   <Grid item>
                     <TextField
                       label="Email"
@@ -199,14 +235,12 @@ const Profile = () => {
                       disabled
                       sx={{
                         '& .MuiInputBase-input.Mui-disabled': {
-                          color: '#000000', // Black color for disabled email text
-                          WebkitTextFillColor: '#000000', // For Safari
+                          color: '#000000',
+                          WebkitTextFillColor: '#000000',
                         },
                       }}
                     />
                   </Grid>
-
-                  {/* Mobile Number Field */}
                   <Grid item>
                     <TextField
                       label="Mobile Number"
@@ -216,13 +250,10 @@ const Profile = () => {
                       margin="normal"
                     />
                   </Grid>
-
-                  {/* Avatar, Username, and Change Photo Button */}
                   <Grid item>
                     <Card sx={{ borderRadius: 4, boxShadow: 6, background: 'lightgray' }}>
                       <CardContent>
                         <Grid container alignItems="center" spacing={2} justifyContent="space-between">
-                          {/* Avatar and Username */}
                           <Grid item>
                             <Grid container alignItems="center" spacing={2}>
                               <Grid item>
@@ -239,8 +270,6 @@ const Profile = () => {
                               </Grid>
                             </Grid>
                           </Grid>
-
-                          {/* Change Photo Button */}
                           <Grid item>
                             <input
                               accept="image/*"
@@ -285,7 +314,6 @@ const Profile = () => {
                 </>
               )}
 
-              {/* Social Metrics */}
               <Grid container justifyContent="space-around" sx={{ marginTop: 3 }}>
                 <Grid item>
                   <Typography variant="h6" align="center">
@@ -296,10 +324,20 @@ const Profile = () => {
                   </Typography>
                 </Grid>
                 <Grid item>
-                  <Typography variant="h6" align="center">
+                  <Typography
+                    variant="h6"
+                    align="center"
+                    onClick={handleOpenFollowersModal}
+                    sx={{ cursor: 'pointer' }}
+                  >
                     {followersCount}
                   </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center' }}>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}
+                    onClick={handleOpenFollowersModal}
+                  >
                     <FollowersIcon sx={{ marginRight: 1, color: '#ff4081' }} /> Followers
                   </Typography>
                 </Grid>
@@ -313,7 +351,12 @@ const Profile = () => {
                 </Grid>
               </Grid>
 
-              {/* Edit/Save and Logout Buttons */}
+              <FollowersList
+                userId={loggedInUserId}
+                open={followersModalOpen}
+                onClose={handleCloseFollowersModal}
+              />
+
               <Grid container justifyContent="center" spacing={2} sx={{ marginTop: 3 }}>
                 <Grid item>
                   {isEditing ? (
@@ -339,4 +382,5 @@ const Profile = () => {
     </Grid>
   );
 };
+
 export default Profile;
