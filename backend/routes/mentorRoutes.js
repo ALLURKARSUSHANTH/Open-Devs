@@ -9,5 +9,7 @@ router.get('/mentees/:firebaseUid', mentoringController.getMentee);
 router.post('/request-mentorship', mentoringController.becomeMentee);
 router.post('/accept/:menteeId/:firebaseUid', mentoringController.acceptMentee);
 router.post('/reject/:mentorId/:firebaseUid', mentoringController.rejectMentee);
+router.post('/submit-rating',mentoringController.submitRating);
+router.get('/:firebaseUid',mentoringController.getMentorDetails);
 
 module.exports = router;

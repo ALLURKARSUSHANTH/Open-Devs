@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
-import { Typography, List, ListItem, ListItemText, Box, Avatar } from '@mui/material';
+import { Typography, Card, CardContent, CardHeader, Avatar, Box, Grid, CircularProgress } from '@mui/material';
 
 const Mentor = () => {
   const [menteeData, setMenteeData] = useState([]);
@@ -40,30 +40,43 @@ const Mentor = () => {
 
   return (
     <div>
-      <Typography variant="h6">Mentor Dashboard</Typography>
+      <Typography variant="h5" gutterBottom>Mentor Dashboard</Typography>
 
-      <Box sx={{ maxHeight: 400, overflowY: 'auto' }}>
+      <Box sx={{ flexGrow: 1 }}>
         {loading ? (
-          <Typography>Loading...</Typography>
+          <Box display="flex" justifyContent="center" alignItems="center" height="100%">
+            <CircularProgress />
+          </Box>
         ) : menteeData.length === 0 ? (
           <Typography>No mentees available</Typography>
         ) : (
-          <List>
+          <Grid container spacing={3}>
             {menteeData.map((mentee) => (
-              <ListItem key={mentee._id}>
-                <Avatar 
-                  src={mentee.photoURL || ""} 
-                  sx={{ bgcolor: 'primary.main', color: 'primary.contrastText', marginRight: 2 }}
-                >
-                  {mentee.displayName ? mentee.displayName[0] : "M"}
-                </Avatar>
-                <ListItemText
-                  primary={mentee.displayName}
-                  secondary={`Email: ${mentee.email}`}
-                />
-              </ListItem>
+              <Grid item xs={12} sm={6} md={4} key={mentee._id}>
+                <Card sx={{ height: '100%' }}>
+                  <CardHeader
+                    avatar={
+                      <Avatar 
+                        src={mentee.photoURL || ""} 
+                        sx={{ bgcolor: 'primary.main', color: 'primary.contrastText' }}
+                      >
+                        {mentee.displayName ? mentee.displayName[0] : "M"}
+                      </Avatar>
+                    }
+                    title={mentee.displayName}
+                    subheader={`Email: ${mentee.email}`}
+                  />
+                  <CardContent>
+                    <Typography variant="body2" color="textSecondary">
+                      {/* You can add more details here about the mentee */}
+                      Mentee ID: {mentee._id}
+                    </Typography>
+                    {/* Add more content like mentorship progress or status here */}
+                  </CardContent>
+                </Card>
+              </Grid>
             ))}
-          </List>
+          </Grid>
         )}
       </Box>
     </div>
