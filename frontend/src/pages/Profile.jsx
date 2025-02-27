@@ -1,4 +1,4 @@
-import React, { useState, useEffect ,useCallback} from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
@@ -31,7 +31,7 @@ const Profile = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [displayName, setDisplayName] = useState(profile?.displayName || 'User');
+  const [displayName, setDisplayName] = useState(profile?.displayName || 'User ');
   const [email, setEmail] = useState(profile?.email || 'No email available');
   const [mobileNumber, setMobileNumber] = useState(profile?.mobileNumber || '');
   const [photoURL, setPhotoURL] = useState(profile?.photoURL || 'https://via.placeholder.com/100');
@@ -88,6 +88,12 @@ const Profile = () => {
       console.error('Logout failed', error);
     }
   };
+
+  const handleRemoveFollower = useCallback((followerId) => {
+    setFollowers((prevFollowers) =>
+      prevFollowers.filter((follower) => follower._id !== followerId)
+    );
+  }, []);
 
   const handleRemoveConnection = useCallback((connectionId) => {
     setConnections((prevConnections) =>
@@ -317,6 +323,8 @@ const Profile = () => {
                 followers={followers}
                 open={followersModalOpen}
                 onClose={handleCloseFollowersModal}
+                onRemoveFollower={handleRemoveFollower}
+                loggedInUserId={loggedInUserId} // Pass the remove follower function
               />
               <ConnectionsList
                 connections={connections}
