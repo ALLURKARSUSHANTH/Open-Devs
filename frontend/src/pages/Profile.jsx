@@ -89,16 +89,11 @@ const Profile = () => {
     }
   };
 
-  const handleRemoveConnection = async (connectionId) => {
-    try {
-      // Update the connections state by filtering out the removed connection
-      setConnections((prevConnections) =>
-        prevConnections.filter((connection) => connection.id !== connectionId)
-      );
-    } catch (err) {
-      console.error('Error removing connection:', err);
-    }
-  };
+  const handleRemoveConnection = useCallback((connectionId) => {
+    setConnections((prevConnections) =>
+      prevConnections.filter((connection) => connection._id !== connectionId)
+    );
+  }, []);
 
   const handleSave = () => {
     console.log('Updated Details:', { displayName, email, mobileNumber, photoURL });
