@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect ,useCallback} from 'react';
 import { useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
@@ -86,6 +86,17 @@ const Profile = () => {
       navigate('/signin');
     } catch (error) {
       console.error('Logout failed', error);
+    }
+  };
+
+  const handleRemoveConnection = async (connectionId) => {
+    try {
+      // Update the connections state by filtering out the removed connection
+      setConnections((prevConnections) =>
+        prevConnections.filter((connection) => connection.id !== connectionId)
+      );
+    } catch (err) {
+      console.error('Error removing connection:', err);
     }
   };
 
@@ -312,11 +323,12 @@ const Profile = () => {
                 open={followersModalOpen}
                 onClose={handleCloseFollowersModal}
               />
-
               <ConnectionsList
                 connections={connections}
                 open={connectionsModalOpen}
                 onClose={handleCloseConnectionsModal}
+                onRemoveConnection={handleRemoveConnection}
+                loggedInUserId={loggedInUserId} // Pass loggedInUserId
               />
 
               <Grid container justifyContent="center" spacing={2} sx={{ marginTop: 3 }}>
