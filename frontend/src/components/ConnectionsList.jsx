@@ -12,14 +12,16 @@ import {
     Dialog,
     DialogTitle,
     DialogContent,
+    CircularProgress,
     DialogActions,
     TextField,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import SearchIcon from '@mui/icons-material/Search';
 import { useSnackbar } from 'notistack';
+import axios from 'axios';
 
-const ConnectionsList = ({ connections, open, onClose, onRemoveConnection }) => {
+const ConnectionsList = ({ connections, open, onClose, onRemoveConnection, loggedInUserId }) => {
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [selectedConnectionId, setSelectedConnectionId] = useState(null);
     const [removing, setRemoving] = useState(false);
@@ -27,23 +29,43 @@ const ConnectionsList = ({ connections, open, onClose, onRemoveConnection }) => 
     const { enqueueSnackbar } = useSnackbar();
 
     const handleRemoveClick = useCallback((connectionId) => {
+        console.log('Connection ID to remove:', connectionId); // Debugging
         setSelectedConnectionId(connectionId);
         setConfirmOpen(true);
     }, []);
 
     const handleConfirmRemove = useCallback(async () => {
+        if (!selectedConnectionId) {
+            console.error('No connection ID selected');
+            return;
+        }
+
         setRemoving(true);
         try {
-            await onRemoveConnection(selectedConnectionId);
+            console.log('Removing connection:', {
+                connectionId: selectedConnectionId,
+                userId: loggedInUserId,
+            });
+
+            const response = await axios.delete(
+                `http://localhost:5000/connections/remove-connection/${selectedConnectionId}`,
+                {
+                    data: { userId: loggedInUserId },
+                }
+            );
+
+            console.log('Backend response:', response.data);
+
+            onRemoveConnection(selectedConnectionId);
             enqueueSnackbar('Connection removed successfully!', { variant: 'success' });
         } catch (error) {
+            console.error('Error removing connection:', error);
             enqueueSnackbar('Failed to remove connection.', { variant: 'error' });
         } finally {
             setRemoving(false);
             setConfirmOpen(false);
         }
-    }, [onRemoveConnection, selectedConnectionId, enqueueSnackbar]);
-
+    }, [selectedConnectionId, onRemoveConnection, enqueueSnackbar, loggedInUserId]);
     const handleCancelRemove = useCallback(() => {
         setConfirmOpen(false);
     }, []);
@@ -158,15 +180,17 @@ const ConnectionsList = ({ connections, open, onClose, onRemoveConnection }) => 
                                                     backgroundColor: 'lightgrey',
                                                     color: 'black',
                                                     borderRadius: 2,
+
                                                     fontSize: '0.875rem', // Smaller text
                                                     padding: '4px 8px', // Adjust padding
                                                     textTransform: 'none',
+
                                                     '&:hover': {
                                                         backgroundColor: 'grey',
                                                     },
                                                 }}
                                                 size="small"
-                                                onClick={() => handleRemoveClick(connection.id)} // Open confirmation dialog
+                                                onClick={() => handleRemoveClick(connection._id)} // Open confirmation dialog
                                             >
                                                 Remove
                                             </Button>
@@ -187,7 +211,12 @@ const ConnectionsList = ({ connections, open, onClose, onRemoveConnection }) => 
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={handleCancelRemove}>Cancel</Button>
-                    <Button onClick={handleConfirmRemove} color="error" disabled={removing}>
+                    <Button
+                        onClick={handleConfirmRemove}
+                        color="error"
+                        disabled={removing}
+                        startIcon={removing ? <CircularProgress size={20} /> : null}
+                    >
                         {removing ? 'Removing...' : 'Remove'}
                     </Button>
                 </DialogActions>
