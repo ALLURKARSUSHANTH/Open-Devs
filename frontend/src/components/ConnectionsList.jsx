@@ -42,11 +42,6 @@ const ConnectionsList = ({ connections, open, onClose, onRemoveConnection, logge
 
         setRemoving(true);
         try {
-            console.log('Removing connection:', {
-                connectionId: selectedConnectionId,
-                userId: loggedInUserId,
-            });
-
             const response = await axios.delete(
                 `http://localhost:5000/connections/remove-connection/${selectedConnectionId}`,
                 {
@@ -56,7 +51,7 @@ const ConnectionsList = ({ connections, open, onClose, onRemoveConnection, logge
 
             console.log('Backend response:', response.data);
 
-            onRemoveConnection(selectedConnectionId);
+            onRemoveConnection(selectedConnectionId); // Ensure this is called
             enqueueSnackbar('Connection removed successfully!', { variant: 'success' });
         } catch (error) {
             console.error('Error removing connection:', error);
@@ -65,7 +60,8 @@ const ConnectionsList = ({ connections, open, onClose, onRemoveConnection, logge
             setRemoving(false);
             setConfirmOpen(false);
         }
-    }, [selectedConnectionId, onRemoveConnection, enqueueSnackbar, loggedInUserId]);
+    }, [selectedConnectionId, onRemoveConnection, enqueueSnackbar, loggedInUserId]); 
+    
     const handleCancelRemove = useCallback(() => {
         setConfirmOpen(false);
     }, []);
