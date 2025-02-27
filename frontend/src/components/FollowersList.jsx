@@ -14,14 +14,14 @@ import {
     DialogContent,
     DialogActions,
     TextField,
-    Skeleton,
-    Snackbar,
+    CircularProgress,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import SearchIcon from '@mui/icons-material/Search';
 import { useSnackbar } from 'notistack';
+import axios from 'axios';
 
-const FollowersList = memo(({ followers, open, onClose, onRemoveFollower }) => {
+const FollowersList = memo(({ followers, open, onClose, loggedInUserId, onRemoveFollower }) => {
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [selectedFollowerId, setSelectedFollowerId] = useState(null);
     const [removing, setRemoving] = useState(false);
@@ -34,18 +34,44 @@ const FollowersList = memo(({ followers, open, onClose, onRemoveFollower }) => {
     }, []);
 
     const handleConfirmRemove = useCallback(async () => {
+        if (!selectedFollowerId) {
+            console.error('No follower ID selected');
+            return;
+        }
+    
         setRemoving(true);
         try {
-            await onRemoveFollower(selectedFollowerId);
+            console.log('Sending request to remove follower:', {
+                followerId: selectedFollowerId,
+                userId: loggedInUserId,
+            });
+    
+            const response = await axios.delete(
+                `http://localhost:5000/follow/remove-follower/${selectedFollowerId}`,
+                {
+                    data: { userId: loggedInUserId },
+                }
+            );
+    
+            console.log('Backend response:', response.data);
+            onRemoveFollower(selectedFollowerId); // Update the parent component
             enqueueSnackbar('Follower removed successfully!', { variant: 'success' });
         } catch (error) {
-            enqueueSnackbar('Failed to remove follower.', { variant: 'error' });
+            console.error('Error removing follower:', error);
+            if (error.response) {
+                enqueueSnackbar(error.response.data.message || 'Failed to remove follower.', {
+                    variant: 'error',
+                });
+            } else {
+                enqueueSnackbar('Failed to remove follower. Please try again.', {
+                    variant: 'error',
+                });
+            }
         } finally {
             setRemoving(false);
             setConfirmOpen(false);
         }
-    }, [onRemoveFollower, selectedFollowerId, enqueueSnackbar]);
-
+    }, [selectedFollowerId, onRemoveFollower, enqueueSnackbar, loggedInUserId]);
     const handleCancelRemove = useCallback(() => {
         setConfirmOpen(false);
     }, []);
@@ -75,7 +101,6 @@ const FollowersList = memo(({ followers, open, onClose, onRemoveFollower }) => {
                         left: '50%',
                         transform: 'translate(-50%, -50%)',
                         width: 400,
-                        
                         bgcolor: 'background.paper', // Ensure background color is set
                         boxShadow: 24,
                         p: 2,
@@ -92,7 +117,6 @@ const FollowersList = memo(({ followers, open, onClose, onRemoveFollower }) => {
                                 right: 8,
                                 top: 8,
                                 color: 'text.secondary',
-                                
                                 '&:hover': {
                                     backgroundColor: 'rgba(0, 0, 0, 0.04)',
                                 },
@@ -170,7 +194,7 @@ const FollowersList = memo(({ followers, open, onClose, onRemoveFollower }) => {
                                                     },
                                                 }}
                                                 size="small"
-                                                onClick={() => handleRemoveClick(follower.id)} // Open confirmation dialog
+                                                onClick={() => handleRemoveClick(follower._id)} // Open confirmation dialog
                                             >
                                                 Remove
                                             </Button>
@@ -191,7 +215,12 @@ const FollowersList = memo(({ followers, open, onClose, onRemoveFollower }) => {
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={handleCancelRemove}>Cancel</Button>
-                    <Button onClick={handleConfirmRemove} color="error" disabled={removing}>
+                    <Button
+                        onClick={handleConfirmRemove}
+                        color="error"
+                        disabled={removing}
+                        startIcon={removing ? <CircularProgress size={20} /> : null}
+                    >
                         {removing ? 'Removing...' : 'Remove'}
                     </Button>
                 </DialogActions>
