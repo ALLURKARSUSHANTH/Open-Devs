@@ -12,6 +12,7 @@ import Profile from '../pages/Profile';
 import Post from '../components/Post';
 import axios from 'axios';
 import Mentoring from '../pages/Mentoring';
+import Chat from '../components/Chat';
 
 function AppRoutes() {
   const [user, setUser] = useState(null);
@@ -71,6 +72,10 @@ function AppRoutes() {
         />
 
         <Route
+          path="/chat"
+          element={user ? <Chat /> : <Navigate to="/signin" />}
+        />
+          <Route
           path="/signin"
           element={!user ? <SignIn /> : <Navigate to="/" />}
         />

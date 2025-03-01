@@ -7,4 +7,5 @@ router.get('/firebase/:firebaseUid', userController.getUserByFirebaseUid);
 router.put('/update/:firebaseUid', userController.updateProfile);
 router.get('/search/:query', userController.searchUser);
 
+
 module.exports = router;

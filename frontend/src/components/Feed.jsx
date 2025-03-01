@@ -11,6 +11,7 @@ import { getAuth, onAuthStateChanged } from "firebase/auth";
 import CloseIcon from "@mui/icons-material/Close";
 import { FavoriteBorderOutlined, CommentOutlined, ShareOutlined, Favorite } from "@mui/icons-material";
 import { fetchPosts, incrementLike, followUser, connectUser } from "../services/posts";
+import socket from '../context/socket'; // Import the socket instance
 
 const GetPosts = () => {
   const [posts, setPosts] = useState([]);
@@ -33,20 +34,27 @@ const GetPosts = () => {
 
   useEffect(() => {
     if (!loggedInUserId) return;
+
     const loadPosts = async () => {
       try {
-        const postsData = await fetchPosts(loggedInUserId); // Using the service
-        setPosts(postsData);
+        const postsData = await fetchPosts(loggedInUserId);
+
+        // Update posts with connection status (if needed)
+        const postsWithConnectionStatus = postsData.map((post) => ({
+          ...post,
+          isConnected: post.author?.connections?.includes(loggedInUserId), // Check if the user is connected
+        }));
+
+        setPosts(postsWithConnectionStatus);
       } catch (err) {
         setError(err.message);
       } finally {
         setLoading(false);
       }
     };
-  
+
     loadPosts();
   }, [loggedInUserId]);
-  
 
   const toggleExpand = (postId) => {
     setExpandedPosts((prevState) => ({
@@ -67,7 +75,7 @@ const GetPosts = () => {
 
   const handleLike = async (postId) => {
     try {
-      await incrementLike(postId, loggedInUserId, posts, setPosts); // Using the service to handle like
+      await incrementLike(postId, loggedInUserId, posts, setPosts);
     } catch (err) {
       alert(err.message);
     }
@@ -80,7 +88,7 @@ const GetPosts = () => {
     }
 
     try {
-      const message = await followUser(authorId, loggedInUserId); // Using the service
+      const message = await followUser(authorId, loggedInUserId);
       setPosts((prevPosts) =>
         prevPosts.map((post) =>
           post.author?._id === authorId
@@ -88,6 +96,13 @@ const GetPosts = () => {
             : post
         )
       );
+
+      // Emit a "follow" event to the backend
+      socket.emit('follow', {
+        userId: loggedInUserId, // The user who is following
+        followUserId: authorId, // The user being followed
+      });
+
       console.log(message);
     } catch (err) {
       alert(err.message);
@@ -101,15 +116,17 @@ const GetPosts = () => {
     }
 
     try {
-      const message = await connectUser(authorId, loggedInUserId); // Using the service
-      setPosts((prevPosts) =>
-        prevPosts.map((post) =>
-          post.author?._id === authorId
-            ? { ...post, isConnected: true }
-            : post
-        )
-      );
+      const message = await connectUser(authorId, loggedInUserId);
       console.log(message);
+
+      // Update the connection status for the post's author
+      const updatedPosts = posts.map((post) =>
+        post.author?._id === authorId
+          ? { ...post, isConnected: true }
+          : post
+      );
+
+      setPosts(updatedPosts);
     } catch (err) {
       alert(err.message);
     }
@@ -137,11 +154,10 @@ const GetPosts = () => {
                 {!post.isConnected && (
                   <Button
                     variant="contained"
-                    color={post.isConnected ? "success" : "secondary"}
+                    color="secondary"
                     size="small"
                     sx={{ borderRadius: '8px' }}
                     onClick={() => handleConnectToggle(post.author._id)}
-                    disabled={post.isConnected}
                   >
                     Connect
                   </Button>
@@ -212,7 +228,7 @@ const GetPosts = () => {
           <Tooltip title="Like">
             <IconButton
               sx={{ padding: "8px 16px", paddingTop: "25px" }}
-              onClick={() => handleLike(post._id)} // Call handleLike
+              onClick={() => handleLike(post._id)}
             >
               {post.isLikedByUser ? (
                 <Favorite sx={{ color: "red" }} />

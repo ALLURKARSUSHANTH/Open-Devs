@@ -3,18 +3,17 @@ import axios from 'axios';
 // Base URL for API
 const API_URL = 'http://localhost:5000';
 
-
 export const createPost = async (formData) => {
-    try {
-        const response = await axios.post(`${API_URL}/posts/create`, formData, {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        });
-        console.log(response);
-    } catch (error) {
-        console.error("Error creating post:", error.response?.data || error.message);
-    }
+  try {
+    const response = await axios.post(`${API_URL}/posts/create`, formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+    console.log(response);
+  } catch (error) {
+    console.error("Error creating post:", error.response?.data || error.message);
+  }
 };
 
 // Fetch posts for a specific user
@@ -28,7 +27,7 @@ export const fetchPosts = async (userId) => {
     return response.data.map((post) => ({
       ...post,
       isFollowing: followingList.includes(post.author?._id),
-      isConnected: connectionsList.includes(post.author?._id),
+      isConnected: connectionsList.includes(post.author?._id), // Check if the user is connected
       isLikedByUser: post.likes.includes(userId),
     }));
   } catch (err) {
@@ -78,17 +77,6 @@ export const followUser = async (authorId, userId) => {
 
 // Connect with a user
 export const connectUser = async (authorId, userId) => {
-  try {
-    const response = await axios.post(`${API_URL}/connections/connect/${authorId}`, {
-      senderId: userId,
-    });
-    return response.data.message;
-  } catch (error) {
-    throw new Error(error.response?.data?.message || 'Failed to create connection');
-  }
-};
-
-export const isConnected = async (authorId, userId) => {
   try {
     const response = await axios.post(`${API_URL}/connections/connect/${authorId}`, {
       senderId: userId,

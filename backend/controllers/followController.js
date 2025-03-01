@@ -1,5 +1,6 @@
 const User = require("../models/User");
 
+
 exports.follow = async (req, res) => {
   try {
     const { userId } = req.body;
@@ -38,6 +39,18 @@ exports.follow = async (req, res) => {
     } else {
       await User.findByIdAndUpdate(userId, { $addToSet: { following: followUserId } });
       await User.findByIdAndUpdate(followUserId, { $addToSet: { followers: userId } });
+      //creating notiofication using socket
+      const io = req.app.get('io'); // Access the `io` instance from the app
+      if (io) {
+        // Emit the follow event
+          io.to(followUserId).emit('follow', {
+            followerId: userId,
+            followerName: user.displayName || user.username,
+            followerPhoto: user.photoURL, // Include photoURL
+            message: `${user.displayName || user.username} started following you.`,
+          });
+        console.log(`Emitted newFollower event to ${followUserId}`);
+      }
       return res.status(200).json({ message: "User followed" });
     }
   } catch (error) {
