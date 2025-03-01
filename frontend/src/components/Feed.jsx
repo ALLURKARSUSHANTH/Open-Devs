@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Box, Card, CardContent, Typography, Button, Modal, IconButton, Avatar, Icon } from "@mui/material";
+import { Box, Card, CardContent, Typography, Button, Modal, IconButton, Avatar, Stack, Tooltip } from "@mui/material";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Navigation, Pagination } from "swiper/modules";
 import "swiper/css";
@@ -9,7 +9,8 @@ import axios from "axios";
 import { useTheme } from "../Theme/toggleTheme";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
 import CloseIcon from "@mui/icons-material/Close";
-import { Stack } from "@mui/system";
+import { FavoriteBorderOutlined, CommentOutlined, ShareOutlined, Favorite } from "@mui/icons-material";
+import { fetchPosts, incrementLike, followUser, connectUser } from "../services/posts";
 
 const GetPosts = () => {
   const [posts, setPosts] = useState([]);
@@ -31,32 +32,21 @@ const GetPosts = () => {
   }, []);
 
   useEffect(() => {
-    const fetchPosts = async () => {
+    if (!loggedInUserId) return;
+    const loadPosts = async () => {
       try {
-        const response = await axios.get(`http://localhost:5000/posts/getPosts/${loggedInUserId}`);
-        const userResponse = await axios.get(
-          `http://localhost:5000/users/firebase/${loggedInUserId}`
-        );
-
-        const followingList = userResponse.data.following;
-        const connectionsList = userResponse.data.connections; // Assuming connections are stored in the user object
-
-        const updatedPosts = response.data.map((post) => ({
-          ...post,
-          isFollowing: followingList.includes(post.author?._id),
-          isConnected: connectionsList.includes(post.author?._id), // Add connection status
-        }));
-
-        setPosts(updatedPosts);
+        const postsData = await fetchPosts(loggedInUserId); // Using the service
+        setPosts(postsData);
       } catch (err) {
-        setError(err.response?.data?.message || "Error fetching posts");
+        setError(err.message);
       } finally {
         setLoading(false);
       }
     };
-
-    if (loggedInUserId) fetchPosts();
+  
+    loadPosts();
   }, [loggedInUserId]);
+  
 
   const toggleExpand = (postId) => {
     setExpandedPosts((prevState) => ({
@@ -75,6 +65,14 @@ const GetPosts = () => {
     setSelectedImages([]);
   };
 
+  const handleLike = async (postId) => {
+    try {
+      await incrementLike(postId, loggedInUserId, posts, setPosts); // Using the service to handle like
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
   const handleFollowToggle = async (authorId) => {
     if (!loggedInUserId) {
       alert("Please log in to follow users.");
@@ -82,10 +80,7 @@ const GetPosts = () => {
     }
 
     try {
-      const response = await axios.post(`http://localhost:5000/follow/${authorId}`, {
-        userId: loggedInUserId,
-      });
-
+      const message = await followUser(authorId, loggedInUserId); // Using the service
       setPosts((prevPosts) =>
         prevPosts.map((post) =>
           post.author?._id === authorId
@@ -93,11 +88,9 @@ const GetPosts = () => {
             : post
         )
       );
-
-      console.log(response.data.message);
-    } catch (error) {
-      console.error("Error updating follow status:", error);
-      alert(error.response?.data?.message || "Failed to update follow status. Please try again.");
+      console.log(message);
+    } catch (err) {
+      alert(err.message);
     }
   };
 
@@ -108,26 +101,17 @@ const GetPosts = () => {
     }
 
     try {
-      const response = await axios.post(
-        `http://localhost:5000/connections/connect/${authorId}`,
-        {
-          senderId: loggedInUserId, 
-        }
-      );
-
+      const message = await connectUser(authorId, loggedInUserId); // Using the service
       setPosts((prevPosts) =>
         prevPosts.map((post) =>
           post.author?._id === authorId
-            ? { ...post, isConnected: true } 
+            ? { ...post, isConnected: true }
             : post
         )
       );
-
-      console.log(response.data.message);
-      alert("Connection request sent successfully!");
-    } catch (error) {
-      console.error("Error creating connection:", error);
-      alert(error.response?.data?.message || "Failed to create connection. Please try again.");
+      console.log(message);
+    } catch (err) {
+      alert(err.message);
     }
   };
 
@@ -141,42 +125,41 @@ const GetPosts = () => {
           {post.author && post.author._id && post.author._id !== loggedInUserId && (
             <Box sx={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 1 }}>
               <Stack direction={"row"} spacing={1}>
-              <Button
-                variant="contained"
-                color={post.isFollowing ? "error" : "primary"}
-                size="small"
-                sx={{ borderRadius: '8px' }}
-                onClick={() => handleFollowToggle(post.author._id)}
-              >
-                {post.isFollowing ? "Unfollow" : "Follow"}
-              </Button>
-              {!post.isConnected  && (
-              <Button
-                variant="contained"
-                color={post.isConnected ? "success" : "secondary"}
-                size="small"
-                sx={{ borderRadius: '8px' }}
-                onClick={() => handleConnectToggle(post.author._id)}
-                disabled={post.isConnected} 
-              >
-             Connect
-              </Button>
-              )}
+                <Button
+                  variant="contained"
+                  color={post.isFollowing ? "error" : "primary"}
+                  size="small"
+                  sx={{ borderRadius: '8px' }}
+                  onClick={() => handleFollowToggle(post.author._id)}
+                >
+                  {post.isFollowing ? "Unfollow" : "Follow"}
+                </Button>
+                {!post.isConnected && (
+                  <Button
+                    variant="contained"
+                    color={post.isConnected ? "success" : "secondary"}
+                    size="small"
+                    sx={{ borderRadius: '8px' }}
+                    onClick={() => handleConnectToggle(post.author._id)}
+                    disabled={post.isConnected}
+                  >
+                    Connect
+                  </Button>
+                )}
               </Stack>
             </Box>
           )}
           <CardContent>
-
-          <Stack direction={"row"} spacing={1}>
+            <Stack direction={"row"} spacing={1}>
               <Avatar
                 src={post.author?.photoURL}
                 alt={post.author?.displayName[0]}
                 sx={{ width: 50, height: 50, cursor: "pointer" }}
               />
-              <Typography variant="h6" sx={{ fontWeight: "bold"}}>
+              <Typography variant="h6" sx={{ fontWeight: "bold" }}>
                 {post.author?.displayName || "Unknown Author"}
               </Typography>
-            </Stack>   
+            </Stack>
             <Typography>
               {expandedPosts[post._id] || post.content.length <= 50
                 ? post.content
@@ -225,13 +208,29 @@ const GetPosts = () => {
               </Box>
             )}
           </CardContent>
+
+          <Tooltip title="Like">
+            <IconButton
+              sx={{ padding: "8px 16px", paddingTop: "25px" }}
+              onClick={() => handleLike(post._id)} // Call handleLike
+            >
+              {post.isLikedByUser ? (
+                <Favorite sx={{ color: "red" }} />
+              ) : (
+                <FavoriteBorderOutlined />
+              )}
+              <Typography>
+                {post.likes.length || 0}
+              </Typography>
+            </IconButton>
+          </Tooltip>
+
           <Box sx={{ display: "flex", justifyContent: "flex-end", padding: "8px 16px", color: "gray" }}>
-                <Typography variant="caption">
-                  {new Date(post.timeStamp).toLocaleString()}
-                </Typography>
+            <Typography variant="caption">
+              {new Date(post.timeStamp).toLocaleString()}
+            </Typography>
           </Box>
         </Card>
-        
       ))}
       <Modal open={isModalOpen} onClose={closeModal}>
         <Box sx={{
@@ -251,7 +250,7 @@ const GetPosts = () => {
           <IconButton onClick={closeModal} sx={{ position: "absolute", top: 10, right: 10, color: "#fff" }}>
             <CloseIcon />
           </IconButton>
-          <Swiper modules={[Navigation, Pagination]} navigation pagination={{ clickable: true}} style={{ width: "80%", height: "100%" }}>
+          <Swiper modules={[Navigation, Pagination]} navigation pagination={{ clickable: true }} style={{ width: "80%", height: "100%" }}>
             {selectedImages.map((imgUrl, index) => (
               <SwiperSlide key={index}>
                 <img src={imgUrl} alt={`${index + 1}`} style={{ width: "100%", height: "100%", objectFit: "contain" }} />

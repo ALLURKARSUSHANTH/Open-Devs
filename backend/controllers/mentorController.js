@@ -2,7 +2,6 @@ const mongoose = require('mongoose');
 const User = require('../models/User');
 const Mentor = require('../models/Mentor');
 const Notification = require('../models/Notification');
-const io = require('../controllers/socketServer');
 
 exports.applyForMentorship = async (req, res) => {
   try {
@@ -78,19 +77,12 @@ exports.becomeMentee = async (req, res) => {
     await mentor.save();
 
     // Create notification
-    // const notification = new Notification({
-    //   userId: mentorId, // Mentor will receive this notification
-    //   message: `${mentee.displayName} wants to be your mentee.`,
-    //   senderId: menteeId, // mentee is sending the request
-    // });
-    // await notification.save();
-
-    // Emit the notification event
-    io.emit('new-mentee-request', {
-      mentorId: mentorId,
-      menteeId: menteeId,
-      message: `${mentee.displayName} sent you a mentee request.`,
+    const notification = new Notification({
+      userId: mentorId, // Mentor will receive this notification
+      message: `${mentee.displayName} wants to be your mentee.`,
+      senderId: menteeId, // mentee is sending the request
     });
+    await notification.save();
 
     return res.status(200).json({ message: "Mentee request sent successfully", mentor });
   } catch (error) {

@@ -78,12 +78,14 @@ exports.getPosts = async (req, res) => {
   }
 };
 
-exports.getPostsCount = async (req, res) => {
+exports.getMyPosts = async (req, res) => {
   try {
     const { id } = req.params;
-    const postsCount = await Post.countDocuments({author:id}); 
-
-    res.status(200).json({ postsCount});
+    const posts = await Post.find({author:id})
+    .populate("author", "displayName _id photoURL") 
+    .sort({ timeStamp: -1 });
+    const count = posts.length;
+    res.status(200).json({ posts, count });
   } catch (error) {
     console.error("Error getting posts count:", error);
     res.status(500).json({ error: error.message });

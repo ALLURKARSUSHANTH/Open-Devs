@@ -65,7 +65,7 @@ const Profile = () => {
         console.log('Followers API Response:', followersRes.data);
 
         console.log('Fetching posts count...');
-        const postsRes = await axios.get(`http://localhost:5000/posts/getPostsCount/${loggedInUserId}`);
+        const postsRes = await axios.get(`http://localhost:5000/posts/getMyPosts/${loggedInUserId}`);
         console.log('Posts API Response:', postsRes.data);
 
         console.log('Fetching connections count...');
@@ -73,9 +73,9 @@ const Profile = () => {
         console.log('Connections API Response:', connectionsRes.data);
 
 
-        setFollowersCount(followersRes.data.followersCount || 0);
-        setPostsCount(postsRes.data.postsCount || 0);
-        setConnectionsCount(connectionsRes.data.connectionsCount || 0);
+        setFollowersCount(followersRes.data.followersCount.length || 0);
+        setPostsCount(postsRes.data.count || 0);
+        setConnectionsCount(connectionsRes.data.connectionsCount.length|| 0);
 
       } catch (err) {
         console.error('Error fetching counts:', err);

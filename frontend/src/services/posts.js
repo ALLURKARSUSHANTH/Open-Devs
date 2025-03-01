@@ -38,11 +38,8 @@ export const fetchPosts = async (userId) => {
 
 // Increment likes for a post
 export const incrementLike = async (postId, loggedInUserId, posts, setPosts) => {
+  const updatedPosts = [...posts];
   try {
-    // Save the current state of posts to rollback if needed
-    const updatedPosts = [...posts];
-
-    // Update local state of like before updating on server
     setPosts((prevPosts) =>
       prevPosts.map((post) =>
         post._id === postId
@@ -81,6 +78,17 @@ export const followUser = async (authorId, userId) => {
 
 // Connect with a user
 export const connectUser = async (authorId, userId) => {
+  try {
+    const response = await axios.post(`${API_URL}/connections/connect/${authorId}`, {
+      senderId: userId,
+    });
+    return response.data.message;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Failed to create connection');
+  }
+};
+
+export const isConnected = async (authorId, userId) => {
   try {
     const response = await axios.post(`${API_URL}/connections/connect/${authorId}`, {
       senderId: userId,

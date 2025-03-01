@@ -46,7 +46,7 @@ exports.follow = async (req, res) => {
   }
 };
 
-exports.getFollowersCount = async (req, res) => {
+exports.getFollowers = async (req, res) => {
   try {
     const { id } = req.params;
     const user = await User.findById(id);
@@ -55,7 +55,7 @@ exports.getFollowersCount = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    return res.status(200).json({ followersCount: user.followers.length });
+    return res.status(200).json({ followersCount: user.followers });
   } catch (error) {
     console.error("Error getting followers count:", error);
     res.status(500).json({ error: error.message });
