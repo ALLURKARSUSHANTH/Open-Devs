@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
-import { Notifications as NotificationsIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
 import axios from 'axios';
@@ -12,7 +11,6 @@ import {
   Grid,
   Button,
   TextField,
-  IconButton,
 } from '@mui/material';
 import { logout } from '../firebase/auth';
 import {
@@ -24,23 +22,24 @@ import {
 const Profile = () => {
   const navigate = useNavigate();
   const profile = useSelector((state) => state.auth.profile);
-  const [followersCount, setFollowersCount] = useState(0);
-  const [postsCount, setPostsCount] = useState(0);
-  const [connectionsCount, setConnectionsCount] = useState(0);
+  const [counts, setCounts] = useState({
+    followers: 0,
+    posts: 0,
+    connections: 0,
+  });
   const [loggedInUserId, setLoggedInUserId] = useState(null);
   const [notificationCount, setNotificationCount] = useState(0);
-  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-
   // State for editable fields
   const [isEditing, setIsEditing] = useState(false);
-  const [displayName, setDisplayName] = useState(profile?.displayName || 'User');
-  const [email, setEmail] = useState(profile?.email || 'No email available');
-  const [mobileNumber, setMobileNumber] = useState(profile?.mobileNumber || '');
-  const [photoURL, setPhotoURL] = useState(profile?.photoURL);
-
+  const [profileData, setProfileData] = useState({
+    displayName: profile?.displayName || 'User',
+    email: profile?.email || 'No email available',
+    mobileNumber: profile?.mobileNumber || '',
+    photoURL: profile?.photoURL || '',
+  });
 
   useEffect(() => {
     const auth = getAuth();
@@ -60,32 +59,20 @@ const Profile = () => {
       if (!loggedInUserId) return;
 
       try {
-        console.log('Fetching followers count...');
-        const followersRes = await axios.get(`http://localhost:5000/follow/${loggedInUserId}/followers-count `);
-        console.log('Followers API Response:', followersRes.data);
+        const [followersRes, postsRes, connectionsRes] = await Promise.all([
+          axios.get(`http://localhost:5000/follow/${loggedInUserId}/followers-count`),
+          axios.get(`http://localhost:5000/posts/getMyPosts/${loggedInUserId}`),
+          axios.get(`http://localhost:5000/connections/connected/${loggedInUserId}`),
+        ]);
 
-        console.log('Fetching posts count...');
-        const postsRes = await axios.get(`http://localhost:5000/posts/getMyPosts/${loggedInUserId}`);
-        console.log('Posts API Response:', postsRes.data);
-
-        console.log('Fetching connections count...');
-        const connectionsRes = await axios.get(`http://localhost:5000/connections/connections-count/${loggedInUserId}`);
-        console.log('Connections API Response:', connectionsRes.data);
-
-
-        setFollowersCount(followersRes.data.followersCount.length || 0);
-        setPostsCount(postsRes.data.count || 0);
-        setConnectionsCount(connectionsRes.data.connectionsCount.length|| 0);
-
+        setCounts({
+          followers: followersRes.data.followersCount.length || 0,
+          posts: postsRes.data.count || 0,
+          connections: connectionsRes.data.count || 0,
+        });
       } catch (err) {
         console.error('Error fetching counts:', err);
-        if (err.response) {
-          setError(`Error: ${err.response.status} - ${err.response.data.message || 'Unknown error'}`);
-        } else if (err.request) {
-          setError('Network error: Could not connect to the server.');
-        } else {
-          setError('Error: Could not send request.');
-        }
+        setError(err.response?.data?.message || 'An error occurred while fetching data.');
       } finally {
         setLoading(false);
       }
@@ -103,32 +90,23 @@ const Profile = () => {
     }
   };
 
-  const handleSave = () => {
-    console.log('Updated Details:', { displayName, email, mobileNumber, photoURL });
-    setIsEditing(false);
-  };
-
-  useEffect(() => {
-    const fetchNotifications = async () => {
-      try {
-        const response = await axios.get(`http://localhost:5000/notifications/${loggedInUserId}`);
-        setNotificationCount(response.data.count); // Assuming the API returns a count
-      } catch (err) {
-        console.error('Error fetching notifications:', err);
-      }
-    };
-
-    if (loggedInUserId) {
-      fetchNotifications();
+  const handleSave = async () => {
+    try {
+      // Update profile data on the server
+      await axios.put(`http://localhost:5000/user/${loggedInUserId}`, profileData);
+      setIsEditing(false);
+    } catch (err) {
+      console.error('Error updating profile:', err);
+      setError(err.response?.data?.message || 'An error occurred while updating profile.');
     }
-  }, [loggedInUserId]);
+  };
 
   const handlePhotoUpload = (event) => {
     const file = event.target.files[0];
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setPhotoURL(reader.result);
+        setProfileData((prev) => ({ ...prev, photoURL: reader.result }));
       };
       reader.readAsDataURL(file);
     }
@@ -160,11 +138,10 @@ const Profile = () => {
           />
 
           <CardContent>
-            
             <Grid container direction="column" alignItems="center" spacing={2}>
               <Avatar
-                src={photoURL}
-                alt={displayName}
+                src={profileData.photoURL}
+                alt={profileData.displayName}
                 sx={{
                   width: 120,
                   height: 120,
@@ -174,73 +151,66 @@ const Profile = () => {
                 }}
               />
 
-              {/* Editable Fields */}
               {isEditing ? (
                 <Grid container direction="column" spacing={2} sx={{ width: '100%', marginTop: 2, paddingLeft: 2 }}>
-                  {/* Full Name Field */}
                   <Grid item>
                     <TextField
                       label="Full Name"
-                      value={displayName}
-                      onChange={(e) => setDisplayName(e.target.value)}
+                      value={profileData.displayName}
+                      onChange={(e) => setProfileData((prev) => ({ ...prev, displayName: e.target.value }))}
                       fullWidth
                       margin="normal"
                     />
                   </Grid>
 
-                  {/* Email Field */}
                   <Grid item>
                     <TextField
                       label="Email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
+                      value={profileData.email}
+                      onChange={(e) => setProfileData((prev) => ({ ...prev, email: e.target.value }))}
                       fullWidth
                       margin="normal"
                       disabled
                       sx={{
                         '& .MuiInputBase-input.Mui-disabled': {
-                          color: '#000000', // Black color for disabled email text
-                          WebkitTextFillColor: '#000000', // For Safari
+                          color: '#000000',
+                          WebkitTextFillColor: '#000000',
                         },
                       }}
                     />
                   </Grid>
 
-                  {/* Mobile Number Field */}
                   <Grid item>
                     <TextField
                       label="Mobile Number"
-                      value={mobileNumber}
-                      onChange={(e) => setMobileNumber(e.target.value)}
+                      value={profileData.mobileNumber}
+                      onChange={(e) => setProfileData((prev) => ({ ...prev, mobileNumber: e.target.value }))}
                       fullWidth
                       margin="normal"
                     />
                   </Grid>
 
-                  {/* Avatar, Username, and Change Photo Button */}
                   <Grid item>
                     <Card sx={{ borderRadius: 4, boxShadow: 6, background: 'lightgray' }}>
                       <CardContent>
                         <Grid container alignItems="center" spacing={2} justifyContent="space-between">
-                          {/* Avatar and Username */}
                           <Grid item>
                             <Grid container alignItems="center" spacing={2}>
                               <Grid item>
                                 <Avatar
-                                  src={photoURL}
-                                  alt={displayName}
+                                  src={profileData.photoURL}
+                                  alt={profileData.displayName}
                                   sx={{ width: 60, height: 60, border: '2px solid black' }}
                                 />
                               </Grid>
                               <Grid item>
                                 <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-                                  {displayName}
+                                  {profileData.displayName}
                                 </Typography>
                               </Grid>
                             </Grid>
                           </Grid>
 
-                          {/* Change Photo Button */}
                           <Grid item>
                             <input
                               accept="image/*"
@@ -274,22 +244,21 @@ const Profile = () => {
               ) : (
                 <>
                   <Typography variant="h4" component="div" sx={{ marginTop: 2, fontWeight: 'bold' }}>
-                    {displayName}
+                    {profileData.displayName}
                   </Typography>
                   <Typography variant="body1" color="text.secondary">
-                    {email}
+                    {profileData.email}
                   </Typography>
                   <Typography variant="body1" color="text.secondary">
-                    {mobileNumber || 'No mobile number available'}
+                    {profileData.mobileNumber || 'No mobile number available'}
                   </Typography>
                 </>
               )}
 
-              {/* Social Metrics */}
               <Grid container justifyContent="space-around" sx={{ marginTop: 3 }}>
                 <Grid item>
                   <Typography variant="h6" align="center">
-                    {connectionsCount}
+                    {counts.connections}
                   </Typography>
                   <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center' }}>
                     <ConnectionsIcon sx={{ marginRight: 1, color: '#6a11cb' }} /> Connections
@@ -297,7 +266,7 @@ const Profile = () => {
                 </Grid>
                 <Grid item>
                   <Typography variant="h6" align="center">
-                    {followersCount}
+                    {counts.followers}
                   </Typography>
                   <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center' }}>
                     <FollowersIcon sx={{ marginRight: 1, color: '#ff4081' }} /> Followers
@@ -305,7 +274,7 @@ const Profile = () => {
                 </Grid>
                 <Grid item>
                   <Typography variant="h6" align="center">
-                    {postsCount}
+                    {counts.posts}
                   </Typography>
                   <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center' }}>
                     <PostsIcon sx={{ marginRight: 1, color: '#4caf50' }} /> Posts
@@ -313,7 +282,6 @@ const Profile = () => {
                 </Grid>
               </Grid>
 
-              {/* Edit/Save and Logout Buttons */}
               <Grid container justifyContent="center" spacing={2} sx={{ marginTop: 3 }}>
                 <Grid item>
                   {isEditing ? (
@@ -339,4 +307,5 @@ const Profile = () => {
     </Grid>
   );
 };
+
 export default Profile;

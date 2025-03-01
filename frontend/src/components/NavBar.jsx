@@ -76,6 +76,7 @@ const NavBar = () => {
     { name: 'Profile', to: '/profile' },
     { name: 'Post', to: '/post' },
     { name: 'Mentoring', to: '/mentoring' },
+    { name: 'Chat', to: '/chat' },
   ];
 
   const handleMobileMenuToggle = () => {
