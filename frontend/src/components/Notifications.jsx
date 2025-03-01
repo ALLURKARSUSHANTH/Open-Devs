@@ -53,7 +53,7 @@ const Notifications = ({ loggedInUserId }) => {
   const handleAcceptRequest = async (senderId) => {
     setProcessing(true);
     try {
-      const response = await fetch(`http://localhost:5000/notifications/accept-request/${senderId}`, {
+      const response = await fetch(`http://localhost:5000/connections/accept-request/${senderId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: loggedInUserId }),
@@ -71,7 +71,7 @@ const Notifications = ({ loggedInUserId }) => {
   const handleRejectRequest = async (senderId) => {
     setProcessing(true);
     try {
-      const response = await fetch(`http://localhost:5000/notifications/reject-request/${senderId}`, {
+      const response = await fetch(`http://localhost:5000/connections/reject-request/${senderId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: loggedInUserId }),
