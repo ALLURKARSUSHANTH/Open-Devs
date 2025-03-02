@@ -1,17 +1,32 @@
 import React, { useState, useEffect } from "react";
-import { Box, Card, CardContent, Typography, Button, Modal, IconButton, Avatar, Stack, Tooltip } from "@mui/material";
+import {
+  Box,
+  Card,
+  CardContent,
+  Typography,
+  Button,
+  Modal,
+  IconButton,
+  Avatar,
+  Stack,
+  Tooltip,
+} from "@mui/material";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Navigation, Pagination } from "swiper/modules";
 import "swiper/css";
 import "swiper/css/navigation";
 import "swiper/css/pagination";
-import axios from "axios";
 import { useTheme } from "../Theme/toggleTheme";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
 import CloseIcon from "@mui/icons-material/Close";
-import { FavoriteBorderOutlined, CommentOutlined, ShareOutlined, Favorite } from "@mui/icons-material";
+import {
+  FavoriteBorderOutlined,
+  CommentOutlined,
+  ShareOutlined,
+  Favorite,
+} from "@mui/icons-material";
 import { fetchPosts, incrementLike, followUser, connectUser } from "../services/posts";
-import socket from '../context/socket'; // Import the socket instance
+import socket from "../context/socket"; // Import the socket instance
 
 const GetPosts = () => {
   const [posts, setPosts] = useState([]);
@@ -38,14 +53,7 @@ const GetPosts = () => {
     const loadPosts = async () => {
       try {
         const postsData = await fetchPosts(loggedInUserId);
-
-        // Update posts with connection status (if needed)
-        const postsWithConnectionStatus = postsData.map((post) => ({
-          ...post,
-          isConnected: post.author?.connections?.includes(loggedInUserId), // Check if the user is connected
-        }));
-
-        setPosts(postsWithConnectionStatus);
+        setPosts(postsData);
       } catch (err) {
         setError(err.message);
       } finally {
@@ -86,9 +94,11 @@ const GetPosts = () => {
       alert("Please log in to follow users.");
       return;
     }
-
+  
     try {
       const message = await followUser(authorId, loggedInUserId);
+  
+      // Update the UI to reflect the new follow/unfollow state
       setPosts((prevPosts) =>
         prevPosts.map((post) =>
           post.author?._id === authorId
@@ -96,13 +106,23 @@ const GetPosts = () => {
             : post
         )
       );
-
-      // Emit a "follow" event to the backend
-      socket.emit('follow', {
-        userId: loggedInUserId, // The user who is following
-        followUserId: authorId, // The user being followed
-      });
-
+  
+      // Emit the appropriate event based on the new follow state
+      const updatedPost = posts.find((post) => post.author?._id === authorId);
+      if (!updatedPost?.isFollowing) {
+        // If the user is now following, emit the "follow" event
+        socket.emit("follow", {
+          userId: loggedInUserId, // The user who is following
+          followUserId: authorId, // The user being followed
+        });
+      } else {
+        // If the user is now unfollowing, emit the "unfollow" event
+        socket.emit("unfollow", {
+          userId: loggedInUserId, // The user who is unfollowing
+          followUserId: authorId, // The user being unfollowed
+        });
+      }
+  
       console.log(message);
     } catch (err) {
       alert(err.message);
@@ -146,17 +166,18 @@ const GetPosts = () => {
                   variant="contained"
                   color={post.isFollowing ? "error" : "primary"}
                   size="small"
-                  sx={{ borderRadius: '8px' }}
+                  sx={{ borderRadius: "8px" }}
                   onClick={() => handleFollowToggle(post.author._id)}
                 >
                   {post.isFollowing ? "Unfollow" : "Follow"}
                 </Button>
+                {/* Only show Connect button if users are not already connected */}
                 {!post.isConnected && (
                   <Button
                     variant="contained"
                     color="secondary"
                     size="small"
-                    sx={{ borderRadius: '8px' }}
+                    sx={{ borderRadius: "8px" }}
                     onClick={() => handleConnectToggle(post.author._id)}
                   >
                     Connect
@@ -176,7 +197,7 @@ const GetPosts = () => {
                 {post.author?.displayName || "Unknown Author"}
               </Typography>
             </Stack>
-            <Typography>
+            <Typography color={theme === "dark" ? "text.secondary" : "text.primary"} sx={{ fontSize: "14px" }}>
               {expandedPosts[post._id] || post.content.length <= 50
                 ? post.content
                 : `${post.content.substring(0, 50)}...`}
@@ -235,9 +256,7 @@ const GetPosts = () => {
               ) : (
                 <FavoriteBorderOutlined />
               )}
-              <Typography>
-                {post.likes.length || 0}
-              </Typography>
+              <Typography>{post.likes.length || 0}</Typography>
             </IconButton>
           </Tooltip>
 
@@ -249,20 +268,22 @@ const GetPosts = () => {
         </Card>
       ))}
       <Modal open={isModalOpen} onClose={closeModal}>
-        <Box sx={{
-          position: "fixed",
-          top: "50%",
-          left: "50%",
-          transform: "translate(-50%, -50%)",
-          width: "100vw",
-          height: "100vh",
-          backgroundColor: "rgba(0, 0, 0, 0.8)",
-          borderRadius: 2,
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          outline: "none",
-        }}>
+        <Box
+          sx={{
+            position: "fixed",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            width: "100vw",
+            height: "100vh",
+            backgroundColor: "rgba(0, 0, 0, 0.8)",
+            borderRadius: 2,
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            outline: "none",
+          }}
+        >
           <IconButton onClick={closeModal} sx={{ position: "absolute", top: 10, right: 10, color: "#fff" }}>
             <CloseIcon />
           </IconButton>

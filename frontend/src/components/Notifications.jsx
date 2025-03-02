@@ -31,10 +31,6 @@ const Notifications = ({ loggedInUserId }) => {
 
       socket.on('newNotification', (notification) => {
         console.log('New notification received:', notification);
-        if (notification.type === 'newFollower') {
-          // Handle new follower notification
-          alert(`${notification.senderId.displayName} started following you.`);
-        }
         setNotifications((prevNotifications) => [notification, ...prevNotifications]);
         setNotificationCount((prevCount) => prevCount + 1);
       });
