@@ -125,18 +125,18 @@ const initializeSocket = (server) => {
       }
     });
 
-    // Handle new follower notifications
-    socket.on('follow', async (data) => {
+    // Handle follow event
+      socket.on('follow', async (data) => {
         const { userId, followUserId } = data;
-      
+
         try {
           const user = await User.findById(userId);
           const followUser = await User.findById(followUserId);
-      
+
           if (!user || !followUser) {
             throw new Error('User or follow user not found');
           }
-      
+
           // Create a notification for the user being followed
           const notification = new Notification({
             userId: followUserId,
@@ -145,13 +145,43 @@ const initializeSocket = (server) => {
             type: 'newFollower',
           });
           await notification.save();
-      
-          // Emit a notification to the user being followed
+
+          // Emit the notification to the user being followed
           io.to(followUserId).emit('newNotification', notification);
-      
-          console.log(`New follower notification sent to ${followUserId} from ${userId}`);
+
+          console.log(`User ${userId} followed ${followUserId}`);
         } catch (error) {
           console.error('Error handling follow event:', error);
+        }
+      });
+
+      // Handle unfollow event
+      socket.on('unfollow', async (data) => {
+        const { userId, followUserId } = data;
+
+        try {
+          const user = await User.findById(userId);
+          const followUser = await User.findById(followUserId);
+
+          if (!user || !followUser) {
+            throw new Error('User or follow user not found');
+          }
+
+          // Create a notification for the user being unfollowed
+          const notification = new Notification({
+            userId: followUserId,
+            message: `${user.displayName} unfollowed you.`,
+            senderId: userId,
+            type: 'newFollower',
+          });
+          await notification.save();
+
+          // Emit the notification to the user being unfollowed
+          io.to(followUserId).emit('newNotification', notification);
+
+          console.log(`User ${userId} unfollowed ${followUserId}`);
+        } catch (error) {
+          console.error('Error handling unfollow event:', error);
         }
       });
     

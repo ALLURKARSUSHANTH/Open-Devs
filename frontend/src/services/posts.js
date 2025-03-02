@@ -27,7 +27,7 @@ export const fetchPosts = async (userId) => {
     return response.data.map((post) => ({
       ...post,
       isFollowing: followingList.includes(post.author?._id),
-      isConnected: connectionsList.includes(post.author?._id), // Check if the user is connected
+      isConnected: connectionsList.includes(post.author?._id), 
       isLikedByUser: post.likes.includes(userId),
     }));
   } catch (err) {
