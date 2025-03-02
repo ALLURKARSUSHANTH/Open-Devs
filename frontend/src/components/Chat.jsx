@@ -21,7 +21,7 @@ import {
 } from '@mui/material';
 import { styled } from '@mui/system';
 
-//My custom UI for chat
+// My custom UI for chat
 const StyledPaper = styled(Paper)(({ theme }) => ({
   borderRadius: '12px',
   boxShadow: theme.shadows[3],
@@ -31,8 +31,8 @@ const StyledPaper = styled(Paper)(({ theme }) => ({
 
 const MessageBubble = styled(Paper)(({ theme, isSender }) => ({
   padding: theme.spacing(1.5),
-  backgroundColor: isSender ? theme.palette.primary.main : theme.palette.grey[20],
-  color: isSender ? '#0a0a0a' : theme.palette.text.primary,
+  backgroundColor: isSender ? theme.palette.primary.main : theme.palette.grey[200],
+  color: isSender ? '#fff' : theme.palette.text.primary,
   borderRadius: isSender ? '12px 12px 0 12px' : '12px 12px 12px 0',
   maxWidth: '70%',
   wordWrap: 'break-word',
@@ -51,6 +51,7 @@ const Chat = () => {
   const theme = useTheme();
   const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
 
+  // Get the logged-in user's UID
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
@@ -101,13 +102,14 @@ const Chat = () => {
     }
   }, [userId, selectedConnection]);
 
-  // Join the user's room
+  // Join the user's room and listen for real-time events
   useEffect(() => {
     if (userId) {
       socket.emit('joinRoom', userId);
 
-      //active users
+      // Listen for active users
       socket.on('activeUsers', (users) => {
+        console.log('Active Users Received:', users);
         setActiveUsers(users);
       });
 
@@ -128,18 +130,24 @@ const Chat = () => {
     };
   }, [userId, selectedConnection]);
 
-  // Send a message
+  // Send a message and update the UI optimistically
   const sendMessage = () => {
     if (message.trim() && userId && selectedConnection) {
-      const data = {
+      const newMessage = {
         senderId: userId,
         receiverId: selectedConnection,
         message: message,
+        createdAt: new Date().toISOString(),
       };
-      socket.emit('sendMessage', data);
+      
+      setMessages((prevMessages) => [...prevMessages, newMessage]);
+  
+      socket.emit('sendMessage', newMessage);
+      
       setMessage('');
     }
   };
+  
 
   return (
     <Box
