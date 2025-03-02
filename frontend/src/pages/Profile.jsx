@@ -14,6 +14,10 @@ import {
   IconButton,
   Modal,
   Box,
+  List,
+  ListItem,
+  ListItemAvatar,
+  ListItemText,
 } from '@mui/material';
 import { logout } from '../firebase/auth';
 import {
@@ -21,8 +25,9 @@ import {
   Favorite as FollowersIcon,
   PhotoLibrary as PostsIcon,
 } from '@mui/icons-material';
-import FollowersList from '../components/FollowersList'; // Import FollowersList
-import ConnectionsList from '../components/ConnectionsList'; // Import ConnectionsList
+import FollowersList from '../components/FollowersList';
+import ConnectionsList from '../components/ConnectionsList';
+import PostsCard from '../components/PostsCard'; // Import the new PostsCard component
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -40,6 +45,7 @@ const Profile = () => {
   const [connections, setConnections] = useState([]);
   const [followersModalOpen, setFollowersModalOpen] = useState(false);
   const [connectionsModalOpen, setConnectionsModalOpen] = useState(false);
+  const [showPosts, setShowPosts] = useState(false);
 
   useEffect(() => {
     const auth = getAuth();
@@ -59,7 +65,6 @@ const Profile = () => {
       if (!loggedInUserId) return;
 
       try {
-        // Fetch followers, posts, and connections in parallel
         const [followersRes, postsRes, connectionsRes] = await Promise.all([
           axios.get(`http://localhost:5000/follow/followers/${loggedInUserId}`),
           axios.get(`http://localhost:5000/posts/getposts/${loggedInUserId}`),
@@ -67,7 +72,7 @@ const Profile = () => {
         ]);
 
         setFollowers(followersRes.data.followers || []);
-        setPosts(postsRes.data.length || []);
+        setPosts(postsRes.data || []);
         setConnections(connectionsRes.data.connections || []);
       } catch (err) {
         console.error('Error fetching data:', err);
@@ -131,6 +136,10 @@ const Profile = () => {
 
   const handleCloseConnectionsModal = () => {
     setConnectionsModalOpen(false);
+  };
+
+  const handleShowPosts = () => {
+    setShowPosts((prev) => !prev);
   };
 
   if (loading) {
@@ -310,10 +319,20 @@ const Profile = () => {
                   </Typography>
                 </Grid>
                 <Grid item>
-                  <Typography variant="h6" align="center">
-                    {posts}
+                  <Typography
+                    variant="h6"
+                    align="center"
+                    onClick={handleShowPosts}
+                    sx={{ cursor: 'pointer' }}
+                  >
+                    {posts.length}
                   </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center' }}>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}
+                    onClick={handleShowPosts}
+                  >
                     <PostsIcon sx={{ marginRight: 1, color: '#4caf50' }} /> Posts
                   </Typography>
                 </Grid>
@@ -324,14 +343,14 @@ const Profile = () => {
                 open={followersModalOpen}
                 onClose={handleCloseFollowersModal}
                 onRemoveFollower={handleRemoveFollower}
-                loggedInUserId={loggedInUserId} // Pass the remove follower function
+                loggedInUserId={loggedInUserId}
               />
               <ConnectionsList
                 connections={connections}
                 open={connectionsModalOpen}
                 onClose={handleCloseConnectionsModal}
                 onRemoveConnection={handleRemoveConnection}
-                loggedInUserId={loggedInUserId} // Pass loggedInUserId
+                loggedInUserId={loggedInUserId}
               />
 
               <Grid container justifyContent="center" spacing={2} sx={{ marginTop: 3 }}>
@@ -355,6 +374,9 @@ const Profile = () => {
             </Grid>
           </CardContent>
         </Card>
+
+        {/* Render the PostsCard below the profile card */}
+        {showPosts && <PostsCard posts={posts} />}
       </Grid>
     </Grid>
   );
