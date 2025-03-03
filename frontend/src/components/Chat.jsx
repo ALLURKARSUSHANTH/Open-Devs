@@ -31,8 +31,8 @@ const StyledPaper = styled(Paper)(({ theme }) => ({
 
 const MessageBubble = styled(Paper)(({ theme, isSender }) => ({
   padding: theme.spacing(1.5),
-  backgroundColor: isSender ? theme.palette.primary.main : theme.palette.grey[200],
-  color: isSender ? '#fff' : theme.palette.text.primary,
+  backgroundColor: isSender ? '#49bbde' : theme.palette.grey[20],
+  color: isSender ? '#191c1a' : theme.palette.text.primary,
   borderRadius: isSender ? '12px 12px 0 12px' : '12px 12px 12px 0',
   maxWidth: '70%',
   wordWrap: 'break-word',
