@@ -18,8 +18,10 @@ import {
   Avatar,
   useMediaQuery,
   useTheme,
+  IconButton,
 } from '@mui/material';
 import { styled } from '@mui/system';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 
 // My custom UI for chat
 const StyledPaper = styled(Paper)(({ theme }) => ({
@@ -31,8 +33,8 @@ const StyledPaper = styled(Paper)(({ theme }) => ({
 
 const MessageBubble = styled(Paper)(({ theme, isSender }) => ({
   padding: theme.spacing(1.5),
-  backgroundColor: isSender ? '#49bbde' : theme.palette.grey[20],
-  color: isSender ? '#191c1a' : theme.palette.text.primary,
+  backgroundColor: isSender ? theme.palette.primary.main : theme.palette.grey[200],
+  color: isSender ? '#fff' : theme.palette.text.primary,
   borderRadius: isSender ? '12px 12px 0 12px' : '12px 12px 12px 0',
   maxWidth: '70%',
   wordWrap: 'break-word',
@@ -139,15 +141,21 @@ const Chat = () => {
         message: message,
         createdAt: new Date().toISOString(),
       };
-      
+
       setMessages((prevMessages) => [...prevMessages, newMessage]);
-  
+
       socket.emit('sendMessage', newMessage);
-      
+
       setMessage('');
     }
   };
-  
+
+  // Sort connections by last message timestamp
+  const sortedConnections = connections.sort((a, b) => {
+    const lastMessageA = messages.filter((msg) => msg.senderId === a._id || msg.receiverId === a._id).pop();
+    const lastMessageB = messages.filter((msg) => msg.senderId === b._id || msg.receiverId === b._id).pop();
+    return new Date(lastMessageB?.createdAt || 0) - new Date(lastMessageA?.createdAt || 0);
+  });
 
   return (
     <Box
@@ -155,96 +163,103 @@ const Chat = () => {
         display: 'flex',
         flexDirection: isSmallScreen ? 'column' : 'row',
         height: '100vh',
-        p: 2,
-        gap: 2,
         backgroundColor: theme.palette.background.default,
       }}
     >
-      {/* Connections List */}
-      <StyledPaper
-        sx={{
-          width: isSmallScreen ? '100%' : '25%',
-          p: 2,
-          overflowY: 'auto',
-        }}
-      >
-        <Typography variant="h6" gutterBottom>
-          Connections
-        </Typography>
-        {loadingConnections ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
-            <CircularProgress size={24} />
-          </Box>
-        ) : connections.length === 0 ? (
-          <Typography variant="body2" color="textSecondary">
-            No connections found.
+      {!selectedConnection && (
+        <StyledPaper
+          sx={{
+            width: isSmallScreen ? '100%' : '25%',
+            p: 2,
+            overflowY: 'auto',
+          }}
+        >
+          <Typography variant="h6" gutterBottom>
+            Connections
           </Typography>
-        ) : (
-          <List>
-            {connections.map((connection) => (
-              <ListItem
-                button
-                key={connection._id}
-                onClick={() => setSelectedConnection(connection._id)}
-                sx={{
-                  backgroundColor:
-                    selectedConnection === connection._id
-                      ? theme.palette.action.selected
-                      : 'inherit',
-                  borderRadius: 1,
-                  mb: 1,
-                  transition: 'background-color 0.2s',
-                  '&:hover': {
-                    backgroundColor: theme.palette.action.hover,
-                  },
-                }}
-              >
-                <Avatar
-                  src={connection.photoURL}
-                  sx={{ width: 40, height: 40, mr: 2 }}
-                />
-                <ListItemText
-                  primary={
-                    <Typography variant="body1" color="textPrimary">
-                      {connection.displayName}
-                    </Typography>
-                  }
-                  secondary={
-                    <Typography component="span" variant="body2" color="textSecondary">
-                      {activeUsers.includes(connection._id) ? (
-                        <Chip label="Online" size="small" color="success" />
-                      ) : (
-                        <Chip label="Offline" size="small" color="error" />
-                      )}
-                    </Typography>
-                  }
-                />
-              </ListItem>
-            ))}
-          </List>
-        )}
-      </StyledPaper>
+          {loadingConnections ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+              <CircularProgress size={24} />
+            </Box>
+          ) : connections.length === 0 ? (
+            <Typography variant="body2" color="textSecondary">
+              No connections found.
+            </Typography>
+          ) : (
+            <List>
+              {sortedConnections.map((connection) => (
+                <ListItem
+                  button
+                  key={connection._id}
+                  onClick={() => setSelectedConnection(connection._id)}
+                  sx={{
+                    backgroundColor:
+                      selectedConnection === connection._id
+                        ? theme.palette.action.selected
+                        : 'inherit',
+                    borderRadius: 1,
+                    mb: 1,
+                    transition: 'background-color 0.2s',
+                    '&:hover': {
+                      backgroundColor: theme.palette.action.hover,
+                    },
+                  }}
+                >
+                  <Avatar
+                    src={connection.photoURL}
+                    sx={{ width: 40, height: 40, mr: 2 }}
+                  />
+                  <ListItemText
+                    primary={
+                      <Typography variant="body1" color="textPrimary">
+                        {connection.displayName}
+                      </Typography>
+                    }
+                    secondary={
+                      <Typography component="span" variant="body2" color="textSecondary">
+                        {activeUsers.includes(connection._id) ? (
+                          <Chip label="Online" size="small" color="success" />
+                        ) : (
+                          <Chip label="Offline" size="small" color="error" />
+                        )}
+                      </Typography>
+                    }
+                  />
+                </ListItem>
+              ))}
+            </List>
+          )}
+        </StyledPaper>
+      )}
 
-      {/* Chat Window */}
       <Box
         sx={{
           flex: 1,
           display: 'flex',
           flexDirection: 'column',
           gap: 2,
+          p: isSmallScreen ? 1 : 2,
         }}
       >
+        {/* Show back button to exit current chat */}
+        {selectedConnection && (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <IconButton onClick={() => setSelectedConnection(null)}>
+              <ArrowBackIcon />
+            </IconButton>
+            <Avatar
+                    src={connections.find((c) => c._id === selectedConnection)?.photoURL}
+                    sx={{ width: 40, height: 40, mr: 2 }}
+            />
+            <Typography variant="h6">
+              Chat with {connections.find((c) => c._id === selectedConnection)?.displayName}
+            </Typography>
+          </Box>
+        )}
+
         {selectedConnection ? (
           <>
             <StyledPaper sx={{ p: 2, flex: 1, overflowY: 'auto' }}>
-              <Typography variant="h6" gutterBottom>
-                Chat with {connections.find((c) => c._id === selectedConnection)?.displayName}
-                {activeUsers.includes(selectedConnection) ? (
-                  <Chip label="Online" size="small" color="success" sx={{ ml: 1 }} />
-                ) : (
-                  <Chip label="Offline" size="small" color="error" sx={{ ml: 1 }} />
-                )}
-              </Typography>
               <Divider sx={{ mb: 2 }} />
               {loadingMessages ? (
                 <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
