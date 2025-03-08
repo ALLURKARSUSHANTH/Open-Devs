@@ -10,6 +10,7 @@ import {
   Avatar,
   Stack,
   Tooltip,
+  TextField,
 } from "@mui/material";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Navigation, Pagination } from "swiper/modules";
@@ -25,8 +26,15 @@ import {
   ShareOutlined,
   Favorite,
 } from "@mui/icons-material";
-import { fetchPosts, incrementLike, followUser, connectUser } from "../services/posts";
-import socket from "../context/socket"; // Import the socket instance
+import {
+  fetchPosts,
+  incrementLike,
+  followUser,
+  connectUser,
+  addComment,
+  fetchComments,
+  addReply,
+} from "../services/posts";
 
 const GetPosts = () => {
   const [posts, setPosts] = useState([]);
@@ -37,6 +45,12 @@ const GetPosts = () => {
   const [selectedImages, setSelectedImages] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [expandedPosts, setExpandedPosts] = useState({});
+  const [commentInputVisible, setCommentInputVisible] = useState({});
+  const [commentText, setCommentText] = useState("");
+  const [postComments, setPostComments] = useState({});
+  const [replyInputVisible, setReplyInputVisible] = useState({});
+  const [replyText, setReplyText] = useState("");
+  const [viewReplies, setViewReplies] = useState({});
 
   useEffect(() => {
     const auth = getAuth();
@@ -94,11 +108,9 @@ const GetPosts = () => {
       alert("Please log in to follow users.");
       return;
     }
-  
+
     try {
       const message = await followUser(authorId, loggedInUserId);
-  
-      // Update the UI to reflect the new follow/unfollow state
       setPosts((prevPosts) =>
         prevPosts.map((post) =>
           post.author?._id === authorId
@@ -106,23 +118,6 @@ const GetPosts = () => {
             : post
         )
       );
-  
-      // Emit the appropriate event based on the new follow state
-      const updatedPost = posts.find((post) => post.author?._id === authorId);
-      if (!updatedPost?.isFollowing) {
-        // If the user is now following, emit the "follow" event
-        socket.emit("follow", {
-          userId: loggedInUserId, // The user who is following
-          followUserId: authorId, // The user being followed
-        });
-      } else {
-        // If the user is now unfollowing, emit the "unfollow" event
-        socket.emit("unfollow", {
-          userId: loggedInUserId, // The user who is unfollowing
-          followUserId: authorId, // The user being unfollowed
-        });
-      }
-  
       console.log(message);
     } catch (err) {
       alert(err.message);
@@ -138,19 +133,85 @@ const GetPosts = () => {
     try {
       const message = await connectUser(authorId, loggedInUserId);
       console.log(message);
-
-      // Update the connection status for the post's author
       const updatedPosts = posts.map((post) =>
         post.author?._id === authorId
           ? { ...post, isConnected: true }
           : post
       );
-
       setPosts(updatedPosts);
     } catch (err) {
       alert(err.message);
     }
   };
+
+  const toggleCommentInput = (postId) => {
+    setCommentInputVisible((prevState) => ({
+      ...prevState,
+      [postId]: !prevState[postId],
+    }));
+  };
+
+  const handleCommentSubmit = async (postId) => {
+    if (!commentText.trim()) return;
+
+    try {
+      await addComment(postId, commentText, loggedInUserId);
+      const updatedComments = await fetchComments(postId);
+      setPostComments((prevState) => ({
+        ...prevState,
+        [postId]: updatedComments,
+      }));
+      setCommentText("");
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
+  const toggleReplyInput = (commentId) => {
+    setReplyInputVisible((prevState) => ({
+      ...prevState,
+      [commentId]: !prevState[commentId],
+    }));
+  };
+
+  const handleReplySubmit = async (postId, commentId) => {
+    if (!replyText.trim()) return;
+
+    try {
+      await addReply(postId, commentId, replyText, loggedInUserId);
+      const updatedComments = await fetchComments(postId);
+      setPostComments((prevState) => ({
+        ...prevState,
+        [postId]: updatedComments,
+      }));
+      setReplyText("");
+      setReplyInputVisible({});
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+  
+ const toggleViewReplies = (commentId) => {
+  setViewReplies((prevState) => ({
+    ...prevState,
+    [commentId]: !prevState[commentId], 
+  }));
+};
+
+  useEffect(() => {
+    const loadComments = async () => {
+      const comments = {};
+      for (const post of posts) {
+        const postComments = await fetchComments(post._id);
+        comments[post._id] = postComments;
+      }
+      setPostComments(comments);
+    };
+
+    if (posts.length > 0) {
+      loadComments();
+    }
+  }, [posts]);
 
   if (loading) return <div>Loading...</div>;
   if (error) return <div style={{ color: "red" }}>{error}</div>;
@@ -171,7 +232,6 @@ const GetPosts = () => {
                 >
                   {post.isFollowing ? "Unfollow" : "Follow"}
                 </Button>
-                {/* Only show Connect button if users are not already connected */}
                 {!post.isConnected && (
                   <Button
                     variant="contained"
@@ -260,7 +320,102 @@ const GetPosts = () => {
             </IconButton>
           </Tooltip>
 
-          <Box sx={{ display: "flex", justifyContent: "flex-end", padding: "8px 16px", color: "gray" }}>
+          <Tooltip title="Comment">
+            <IconButton
+              sx={{ padding: "8px 16px", paddingTop: "25px" }}
+              onClick={() => toggleCommentInput(post._id)}
+            >
+              <CommentOutlined />
+              <Typography>{post.comments.length || 0}</Typography>
+            </IconButton>
+          </Tooltip>
+
+          {commentInputVisible[post._id] && (
+            <Stack direction={"column"} spacing={1}>
+              <Box sx={{ display: "flex", gap: 1, padding: "8px 16px" }}>
+                <TextField
+                  fullWidth
+                  variant="outlined"
+                  placeholder="Add a comment..."
+                  value={commentText}
+                  onChange={(e) => setCommentText(e.target.value)}
+                />
+                <Button
+                  variant="text"
+                  color="primary"
+                  onClick={() => handleCommentSubmit(post._id)}
+                >
+                  Post
+                </Button>
+              </Box>
+              <Box sx={{ marginTop: 2 }}>
+                <Typography variant="h6" sx={{ fontWeight: "bold" }}>
+                  Comments
+                </Typography>
+                {postComments[post._id]?.map((comment) => (
+                  <Box key={comment._id} sx={{ marginTop: 1 }}>
+                    <Stack direction={"row"} spacing={1}>
+                      <Avatar
+                        src={comment.user?.photoURL}
+                        alt={comment.user?.displayName[0]}
+                        sx={{ width: 20, height: 20, cursor: "pointer" }}
+                      />
+                      <Typography>
+                        {comment.user?.displayName || "Unknown User"}
+                      </Typography>
+                    </Stack>
+                    <Typography color="textSecondary">{comment.text}</Typography>
+                    <Button
+                      variant="text"
+                      onClick={() => toggleReplyInput(comment._id)}
+                    >
+                      Reply
+                    </Button>
+                    {replyInputVisible[comment._id] && (
+                      <Box sx={{ display: "flex", gap: 1, padding: "8px 16px" }}>
+                        <TextField
+                          fullWidth
+                          variant="outlined"
+                          placeholder={`Reply to ${comment.user?.displayName}`}
+                          value={replyText}
+                          onChange={(e) => setReplyText(e.target.value)}
+                        />
+                        <Button
+                          variant="text"
+                          color="primary"
+                          onClick={() => handleReplySubmit(post._id, comment._id)}
+                        >
+                          Post
+                        </Button>
+                      </Box>
+                    )}
+                    {comment.replies && comment.replies.length > 0 && (
+                      <Button onClick={() => toggleViewReplies(comment._id)}>
+                        {viewReplies[comment._id] ? "Hide Replies" : "View Replies"}
+                      </Button>
+                    )}
+                    {viewReplies[comment._id] && comment.replies && comment.replies.map((reply) => (
+                      <Box key={reply._id} sx={{ marginLeft: 20 }}>
+                        <Stack direction={"row"} spacing={1}>
+                          <Avatar
+                            src={reply.user?.photoURL}
+                            alt={reply.user?.displayName[0]}
+                            sx={{ width: 20, height: 20, cursor: "pointer" }}
+                          />
+                          <Typography>
+                            {reply.user?.displayName || "Unknown User"}
+                          </Typography>
+                        </Stack>
+                        <Typography color="textSecondary">{reply.text}</Typography>
+                      </Box>
+                    ))}
+                  
+                  </Box>
+                ))}
+              </Box>
+            </Stack>
+          )}
+          <Box sx={{ display: "flex", padding: "8px 16px", color: "gray" }}>
             <Typography variant="caption">
               {new Date(post.timeStamp).toLocaleString()}
             </Typography>
