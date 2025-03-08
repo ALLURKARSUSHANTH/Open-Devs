@@ -395,7 +395,7 @@ const GetPosts = () => {
                       </Button>
                     )}
                     {viewReplies[comment._id] && comment.replies && comment.replies.map((reply) => (
-                      <Box key={reply._id} sx={{ marginLeft: 20 }}>
+                      <Box key={reply._id} sx={{ marginLeft: 10 }}>
                         <Stack direction={"row"} spacing={1}>
                           <Avatar
                             src={reply.user?.photoURL}
