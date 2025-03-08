@@ -243,7 +243,7 @@ const Chat = () => {
       >
         {/* Show back button to exit current chat */}
         {selectedConnection && (
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1,position:'sticky', top: 0, backgroundColor: theme.palette.background.paper, zIndex: 1, p: 1 }}>
             <IconButton onClick={() => setSelectedConnection(null)}>
               <ArrowBackIcon />
             </IconButton>
@@ -291,7 +291,7 @@ const Chat = () => {
             </StyledPaper>
 
             {/* Message Input */}
-            <Box sx={{ display: 'flex', gap: 2 }}>
+            <Box sx={{ display: 'flex', gap: 2,position: 'sticky', bottom: 0, p: 2, backgroundColor: theme.palette.background.paper }}>
               <TextField
                 fullWidth
                 variant="outlined"
