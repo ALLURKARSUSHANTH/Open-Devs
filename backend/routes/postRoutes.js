@@ -9,4 +9,6 @@ router.post('/pushLikes/:id', postController.pushLikes);
 router.get('/getLikes/:id', postController.getLikes);
 router.get('/getComments/:id' ,postController.getComments);
 router.post('/addComment/:id', postController.addComment);
+router.post('/addReply/:postId/:commentId', postController.addReply);
+
 module.exports = router;
