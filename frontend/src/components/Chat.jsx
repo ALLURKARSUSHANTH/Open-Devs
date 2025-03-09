@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect , useRef} from 'react';
 import socket from '../context/socket';
 import axios from 'axios';
 import { auth } from '../firebase/firebaseConfig';
@@ -19,6 +19,7 @@ import {
   useMediaQuery,
   useTheme,
   IconButton,
+  Badge,
 } from '@mui/material';
 import { styled } from '@mui/system';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
@@ -33,8 +34,20 @@ const StyledPaper = styled(Paper)(({ theme }) => ({
 
 const MessageBubble = styled(Paper)(({ theme, isSender }) => ({
   padding: theme.spacing(1.5),
-  backgroundColor: isSender ? theme.palette.primary.main : theme.palette.grey[200],
-  color: isSender ? '#fff' : theme.palette.text.primary,
+  backgroundColor: isSender
+    ? theme.palette.mode === 'dark'
+      ? theme.palette.primary.dark 
+      : theme.palette.primary.main 
+    : theme.palette.mode === 'dark'
+    ? theme.palette.grey[800] 
+    : theme.palette.grey[200],
+  color: isSender
+    ? theme.palette.getContrastText(
+        theme.palette.mode === 'dark'
+          ? theme.palette.primary.dark
+          : theme.palette.primary.main
+      )
+    : theme.palette.text.primary,
   borderRadius: isSender ? '12px 12px 0 12px' : '12px 12px 12px 0',
   maxWidth: '70%',
   wordWrap: 'break-word',
@@ -49,10 +62,22 @@ const Chat = () => {
   const [activeUsers, setActiveUsers] = useState([]);
   const [loadingConnections, setLoadingConnections] = useState(false);
   const [loadingMessages, setLoadingMessages] = useState(false);
+  const [unreadCount, setUnreadCount] = useState({});
+  const messageRef = useRef(null);
 
+  
   const theme = useTheme();
   const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
 
+  const scrollToBottom = () => {
+    messageRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+  
   // Get the logged-in user's UID
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -74,6 +99,11 @@ const Chat = () => {
         try {
           const response = await axios.get(`http://localhost:5000/connections/connected/${userId}`);
           setConnections(response.data.connections);
+          const initialUnreadMessages = {};
+          response.data.connections.forEach((connection) => {
+            initialUnreadMessages[connection._id] = 0;
+          });
+          setUnreadCount(initialUnreadMessages);
         } catch (error) {
           console.error('Failed to fetch connections:', error);
         } finally {
@@ -93,6 +123,11 @@ const Chat = () => {
         try {
           const response = await axios.get(`http://localhost:5000/messages/${userId}/${selectedConnection}`);
           setMessages(response.data);
+          setUnreadCount((prevUnreadCount) => ({
+            ...prevUnreadCount,
+            [selectedConnection]: 0,
+          })
+          )
         } catch (error) {
           console.error('Failed to fetch messages:', error);
         } finally {
@@ -122,6 +157,13 @@ const Chat = () => {
           newMessage.receiverId === selectedConnection
         ) {
           setMessages((prevMessages) => [...prevMessages, newMessage]);
+        }
+
+        if(newMessage.senderId !== selectedConnection) {
+          setUnreadCount((prevUnreadCount) => ({
+            ...prevUnreadCount,
+            [newMessage.senderId]: (prevUnreadCount[newMessage.senderId]  || 0)+ 1,
+          }));
         }
       });
     }
@@ -205,10 +247,15 @@ const Chat = () => {
                     },
                   }}
                 >
+                  <Badge
+                  badgeContent={unreadCount[connection._id] || 0}
+                  color="error"
+                  sx={{ mr: 2 }}>
                   <Avatar
                     src={connection.photoURL}
                     sx={{ width: 40, height: 40, mr: 2 }}
                   />
+                  </Badge>
                   <ListItemText
                     primary={
                       <Typography variant="body1" color="textPrimary">
@@ -288,10 +335,11 @@ const Chat = () => {
                   </Box>
                 ))
               )}
+              <div ref={messageRef}/>
             </StyledPaper>
 
             {/* Message Input */}
-            <Box sx={{ display: 'flex', gap: 2,position: 'sticky', bottom: 0, p: 2, backgroundColor: theme.palette.background.paper }}>
+            <Box sx={{ display: 'inherit', gap: 2,position: 'sticky', bottom: 50, p: 2, backgroundColor: theme.palette.background.paper             }}>
               <TextField
                 fullWidth
                 variant="outlined"
