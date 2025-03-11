@@ -78,6 +78,19 @@ exports.getPosts = async (req, res) => {
   }
 };
 
+exports.getMyPosts = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const posts = await Post.find({author:id})
+    .populate("author", "displayName _id photoURL") 
+    .sort({ timeStamp: -1 });
+    const count = posts.length;
+    res.status(200).json({ posts, count });
+  } catch (error) {
+    console.error("Error getting posts count:", error);
+    res.status(500).json({ error: error.message });
+  }
+};
 exports.getLikes = async (req, res) => {
   try {
     const { id } = req.params;
@@ -103,7 +116,7 @@ exports.pushLikes = async (req, res) => {
     if(post.likes.includes(userId)){
       post.likes.pull(userId);
       await post.save();
-      return res.status(400).json({ message: "Unliked" });
+      return res.status(200).json({ message: "Unliked" });
     }
     post.likes.addToSet(userId);
     await post.save();
@@ -138,7 +151,7 @@ exports.addComment = async (req, res) => {
 exports.getComments = async (req, res) => {
   try {
     const { id } = req.params; 
-    const post = await Post.findById(id).populate("comments.user", "displayName photoURL");
+    const post = await Post.findById(id).populate("comments.user   comments.replies.user", "displayName photoURL");
 
     if (!post) {
       return res.status(404).json({ message: "Post not found" });
@@ -147,6 +160,32 @@ exports.getComments = async (req, res) => {
     res.status(200).json(post.comments);
   } catch (error) {
     console.error("Error fetching comments:", error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.addReply = async (req, res) => {
+  try {
+    const { postId, commentId } = req.params;
+    const { user, text } = req.body;
+
+    const post = await Post.findById(postId);
+    if (!post) {
+      return res.status(404).json({ message: "Post not found" });
+    }
+
+    const comment = post.comments.id(commentId);
+    if (!comment) {
+      return res.status(404).json({ message: "Comment not found" });
+    }
+
+    const newReply = { user, text, timeStamp: new Date() };
+    comment.replies.push(newReply);
+    await post.save();
+
+    res.status(201).json({ message: "Reply added successfully", reply: newReply });
+  } catch (error) {
+    console.error("Error adding reply:", error);
     res.status(500).json({ error: error.message });
   }
 };
