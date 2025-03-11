@@ -9,8 +9,15 @@ const PostSchema = new mongoose.Schema({
     {
       user: {type: String, ref: "User"},
       text: String,
-      timeStamp : {type: Date, default: Date.now}
-    }
+      timeStamp : {type: Date, default: Date.now},
+        replies : [
+          {
+            user: {type: String, ref: "User"},
+            text: String,
+            timeStamp : {type: Date, default: Date.now}
+          }
+        ]
+     }
   ],
   timeStamp: { type: Date, default: Date.now },
 });

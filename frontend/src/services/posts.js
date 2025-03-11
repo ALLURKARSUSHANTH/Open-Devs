@@ -3,18 +3,17 @@ import axios from 'axios';
 // Base URL for API
 const API_URL = 'http://localhost:5000';
 
-
 export const createPost = async (formData) => {
-    try {
-        const response = await axios.post(`${API_URL}/posts/create`, formData, {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        });
-        console.log(response);
-    } catch (error) {
-        console.error("Error creating post:", error.response?.data || error.message);
-    }
+  try {
+    const response = await axios.post(`${API_URL}/posts/create`, formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+    console.log(response);
+  } catch (error) {
+    console.error("Error creating post:", error.response?.data || error.message);
+  }
 };
 
 // Fetch posts for a specific user
@@ -28,7 +27,7 @@ export const fetchPosts = async (userId) => {
     return response.data.map((post) => ({
       ...post,
       isFollowing: followingList.includes(post.author?._id),
-      isConnected: connectionsList.includes(post.author?._id),
+      isConnected: connectionsList.includes(post.author?._id), 
       isLikedByUser: post.likes.includes(userId),
     }));
   } catch (err) {
@@ -38,11 +37,8 @@ export const fetchPosts = async (userId) => {
 
 // Increment likes for a post
 export const incrementLike = async (postId, loggedInUserId, posts, setPosts) => {
+  const updatedPosts = [...posts];
   try {
-    // Save the current state of posts to rollback if needed
-    const updatedPosts = [...posts];
-
-    // Update local state of like before updating on server
     setPosts((prevPosts) =>
       prevPosts.map((post) =>
         post._id === postId
@@ -88,5 +84,44 @@ export const connectUser = async (authorId, userId) => {
     return response.data.message;
   } catch (error) {
     throw new Error(error.response?.data?.message || 'Failed to create connection');
+  }
+};
+
+// Add a comment to a post
+export const addComment = async (postId, comment, authorId) => {
+  try {
+    const response = await axios.post(`${API_URL}/posts/addComment/${postId}`, {
+      user: authorId,
+      text: comment,
+    });
+    console.log(response.data.message);
+  } catch (error) {
+    console.error("Error adding comment:", error);
+    alert(error.response?.data?.message || "Failed to add comment. Please try again.");
+  }
+}
+
+// Fetch comments for a post
+export const fetchComments = async (postId) => {
+  try {
+    const response = await axios.get(`${API_URL}/posts/getComments/${postId}`);
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Failed to fetch comments');
+  }
+};
+
+// Add a reply to a comment
+export const addReply = async (postId, commentId, reply, authorId) => {
+  try{
+    const response = await axios.post(`${API_URL}/posts/addReply/${postId}/${commentId}`, {
+      user: authorId,
+      text: reply,
+    });
+    console.log(response.data.message);
+  }
+  catch (error) {
+    console.error("Error adding reply:", error);
+    alert(error.response?.data?.message || "Failed to add reply. Please try again.");
   }
 };
