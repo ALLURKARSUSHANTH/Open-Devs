@@ -11,7 +11,6 @@ import {
   Grid,
   Button,
   TextField,
-  IconButton,
   Modal,
   Box,
   List,
@@ -27,23 +26,33 @@ import {
 } from '@mui/icons-material';
 import FollowersList from '../components/FollowersList';
 import ConnectionsList from '../components/ConnectionsList';
-import PostsCard from '../components/PostsCard'; // Import the new PostsCard component
+import PostsCard from '../components/PostsCard';
 
 const Profile = () => {
   const navigate = useNavigate();
   const profile = useSelector((state) => state.auth.profile);
+  const [counts, setCounts] = useState({
+    followers: 0,
+    posts: 0,
+    connections: 0,
+  });
   const [loggedInUserId, setLoggedInUserId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // State for editable fields
   const [isEditing, setIsEditing] = useState(false);
-  const [displayName, setDisplayName] = useState(profile?.displayName || 'User ');
-  const [email, setEmail] = useState(profile?.email || 'No email available');
-  const [mobileNumber, setMobileNumber] = useState(profile?.mobileNumber || '');
-  const [photoURL, setPhotoURL] = useState(profile?.photoURL || 'https://via.placeholder.com/100');
+  const [profileData, setProfileData] = useState({
+    displayName: profile?.displayName || 'User',
+    email: profile?.email || 'No email available',
+    mobileNumber: profile?.mobileNumber || '',
+    photoURL: profile?.photoURL || '',
+  });
+
   const [followers, setFollowers] = useState([]);
-  const [followersCount, setFollowersCount] = useState(0);
-  const [posts, setPosts] = useState([]);
   const [connections, setConnections] = useState([]);
+  const [posts, setPosts] = useState([]);
+
   const [followersModalOpen, setFollowersModalOpen] = useState(false);
   const [connectionsModalOpen, setConnectionsModalOpen] = useState(false);
   const [showPosts, setShowPosts] = useState(false);
@@ -62,30 +71,30 @@ const Profile = () => {
   }, []);
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchCounts = async () => {
       if (!loggedInUserId) return;
 
       try {
         const [followersRes, postsRes, connectionsRes] = await Promise.all([
-          axios.get(`http://localhost:5000/follow/followers/${loggedInUserId}`),
-          axios.get(`http://localhost:5000/posts/getposts/${loggedInUserId}`),
-          axios.get(`http://localhost:5000/connections/connections/${loggedInUserId}`),
+          axios.get(`http://localhost:5000/follow/${loggedInUserId}/followers-count`),
+          axios.get(`http://localhost:5000/posts/getMyPosts/${loggedInUserId}`),
+          axios.get(`http://localhost:5000/connections/connected/${loggedInUserId}`),
         ]);
 
         setFollowers(followersRes.data.followers || []);
-        setFollowersCount(followersRes.data.followersCount || 0);
-
-        setPosts(postsRes.data || []);
+        setPosts(postsRes.data.posts || []);
         setConnections(connectionsRes.data.connections || []);
+
+        
       } catch (err) {
-        console.error('Error fetching data:', err);
-        setError('Failed to fetch data.');
+        console.error('Error fetching counts:', err);
+        setError(err.response?.data?.message || 'An error occurred while fetching data.');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchData();
+    fetchCounts();
   }, [loggedInUserId]);
 
   const handleLogout = async () => {
@@ -101,7 +110,7 @@ const Profile = () => {
     setFollowers((prevFollowers) =>
       prevFollowers.filter((follower) => follower._id !== followerId)
     );
-    setFollowersCount((prevCount) => prevCount - 1); // Decrement the followers count
+    setCounts((prevCounts) => ({ ...prevCounts, followers: prevCounts.followers - 1 }));
   }, []);
 
   const handleRemoveConnection = useCallback((connectionId) => {
@@ -110,41 +119,42 @@ const Profile = () => {
     );
   }, []);
 
-  const handleSave = () => {
-    console.log('Updated Details:', { displayName, email, mobileNumber, photoURL });
-    setIsEditing(false);
+  const handleSave = async () => {
+    try {
+      await axios.put(`http://localhost:5000/profile/${loggedInUserId}`, profileData);
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      setError('Failed to update profile.');
+    }
   };
 
-  const handlePhotoUpload = (event) => {
+  const handlePhotoUpload = async (event) => {
     const file = event.target.files[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setPhotoURL(reader.result);
+      reader.onloadend = async () => {
+        const newPhotoURL = reader.result;
+        setProfileData((prev) => ({ ...prev, photoURL: newPhotoURL }));
+
+        try {
+          await axios.put(`http://localhost:5000/profile/${loggedInUserId}/photo`, {
+            photoURL: newPhotoURL,
+          });
+        } catch (error) {
+          console.error('Error updating photo:', error);
+          setError('Failed to update photo.');
+        }
       };
       reader.readAsDataURL(file);
     }
   };
 
-  const handleOpenFollowersModal = () => {
-    setFollowersModalOpen(true);
-  };
-
-  const handleCloseFollowersModal = () => {
-    setFollowersModalOpen(false);
-  };
-
-  const handleOpenConnectionsModal = () => {
-    setConnectionsModalOpen(true);
-  };
-
-  const handleCloseConnectionsModal = () => {
-    setConnectionsModalOpen(false);
-  };
-
-  const handleShowPosts = () => {
-    setShowPosts((prev) => !prev);
-  };
+  const handleOpenFollowersModal = () => setFollowersModalOpen(true);
+  const handleCloseFollowersModal = () => setFollowersModalOpen(false);
+  const handleOpenConnectionsModal = () => setConnectionsModalOpen(true);
+  const handleCloseConnectionsModal = () => setConnectionsModalOpen(false);
+  const handleShowPosts = () => setShowPosts((prev) => !prev);
 
   if (loading) {
     return <Typography variant="h6">Loading...</Typography>;
@@ -174,8 +184,8 @@ const Profile = () => {
           <CardContent>
             <Grid container direction="column" alignItems="center" spacing={2}>
               <Avatar
-                src={photoURL}
-                alt={displayName}
+                src={profileData.photoURL}
+                alt={profileData.displayName}
                 sx={{
                   width: 120,
                   height: 120,
@@ -190,8 +200,8 @@ const Profile = () => {
                   <Grid item>
                     <TextField
                       label="Full Name"
-                      value={displayName}
-                      onChange={(e) => setDisplayName(e.target.value)}
+                      value={profileData.displayName}
+                      onChange={(e) => setProfileData((prev) => ({ ...prev, displayName: e.target.value }))}
                       fullWidth
                       margin="normal"
                     />
@@ -199,8 +209,8 @@ const Profile = () => {
                   <Grid item>
                     <TextField
                       label="Email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
+                      value={profileData.email}
+                      onChange={(e) => setProfileData((prev) => ({ ...prev, email: e.target.value }))}
                       fullWidth
                       margin="normal"
                       disabled
@@ -215,8 +225,8 @@ const Profile = () => {
                   <Grid item>
                     <TextField
                       label="Mobile Number"
-                      value={mobileNumber}
-                      onChange={(e) => setMobileNumber(e.target.value)}
+                      value={profileData.mobileNumber}
+                      onChange={(e) => setProfileData((prev) => ({ ...prev, mobileNumber: e.target.value }))}
                       fullWidth
                       margin="normal"
                     />
@@ -229,14 +239,14 @@ const Profile = () => {
                             <Grid container alignItems="center" spacing={2}>
                               <Grid item>
                                 <Avatar
-                                  src={photoURL}
-                                  alt={displayName}
+                                  src={profileData.photoURL}
+                                  alt={profileData.displayName}
                                   sx={{ width: 60, height: 60, border: '2px solid black' }}
                                 />
                               </Grid>
                               <Grid item>
                                 <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-                                  {displayName}
+                                  {profileData.displayName}
                                 </Typography>
                               </Grid>
                             </Grid>
@@ -274,13 +284,13 @@ const Profile = () => {
               ) : (
                 <>
                   <Typography variant="h4" component="div" sx={{ marginTop: 2, fontWeight: 'bold' }}>
-                    {displayName}
+                    {profileData.displayName}
                   </Typography>
                   <Typography variant="body1" color="text.secondary">
-                    {email}
+                    {profileData.email}
                   </Typography>
                   <Typography variant="body1" color="text.secondary">
-                    {mobileNumber || 'No mobile number available'}
+                    {profileData.mobileNumber || 'No mobile number available'}
                   </Typography>
                 </>
               )}
@@ -311,7 +321,7 @@ const Profile = () => {
                     onClick={handleOpenFollowersModal}
                     sx={{ cursor: 'pointer' }}
                   >
-                    {followersCount}
+                    {followers.length}
                   </Typography>
                   <Typography
                     variant="body2"
@@ -379,7 +389,6 @@ const Profile = () => {
           </CardContent>
         </Card>
 
-        {/* Render the PostsCard below the profile card */}
         {showPosts && <PostsCard posts={posts} />}
       </Grid>
     </Grid>

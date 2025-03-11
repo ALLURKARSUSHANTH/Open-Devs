@@ -1,15 +1,40 @@
 import React, { useState, useEffect } from "react";
-import { Box, Card, CardContent, Typography, Button, Modal, IconButton, Avatar, Icon } from "@mui/material";
+import {
+  Box,
+  Card,
+  CardContent,
+  Typography,
+  Button,
+  Modal,
+  IconButton,
+  Avatar,
+  Stack,
+  Tooltip,
+  TextField,
+} from "@mui/material";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Navigation, Pagination } from "swiper/modules";
 import "swiper/css";
 import "swiper/css/navigation";
 import "swiper/css/pagination";
-import axios from "axios";
 import { useTheme } from "../Theme/toggleTheme";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
 import CloseIcon from "@mui/icons-material/Close";
-import { Stack } from "@mui/system";
+import {
+  FavoriteBorderOutlined,
+  CommentOutlined,
+  ShareOutlined,
+  Favorite,
+} from "@mui/icons-material";
+import {
+  fetchPosts,
+  incrementLike,
+  followUser,
+  connectUser,
+  addComment,
+  fetchComments,
+  addReply,
+} from "../services/posts";
 
 const GetPosts = () => {
   const [posts, setPosts] = useState([]);
@@ -20,6 +45,12 @@ const GetPosts = () => {
   const [selectedImages, setSelectedImages] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [expandedPosts, setExpandedPosts] = useState({});
+  const [commentInputVisible, setCommentInputVisible] = useState({});
+  const [commentText, setCommentText] = useState("");
+  const [postComments, setPostComments] = useState({});
+  const [replyInputVisible, setReplyInputVisible] = useState({});
+  const [replyText, setReplyText] = useState("");
+  const [viewReplies, setViewReplies] = useState({});
 
   useEffect(() => {
     const auth = getAuth();
@@ -31,31 +62,20 @@ const GetPosts = () => {
   }, []);
 
   useEffect(() => {
-    const fetchPosts = async () => {
+    if (!loggedInUserId) return;
+
+    const loadPosts = async () => {
       try {
-        const response = await axios.get(`http://localhost:5000/posts/getPosts/${loggedInUserId}`);
-        const userResponse = await axios.get(
-          `http://localhost:5000/users/firebase/${loggedInUserId}`
-        );
-
-        const followingList = userResponse.data.following;
-        const connectionsList = userResponse.data.connections; // Assuming connections are stored in the user object
-
-        const updatedPosts = response.data.map((post) => ({
-          ...post,
-          isFollowing: followingList.includes(post.author?._id),
-          isConnected: connectionsList.includes(post.author?._id), // Add connection status
-        }));
-
-        setPosts(updatedPosts);
+        const postsData = await fetchPosts(loggedInUserId);
+        setPosts(postsData);
       } catch (err) {
-        setError(err.response?.data?.message || "Error fetching posts");
+        setError(err.message);
       } finally {
         setLoading(false);
       }
     };
 
-    if (loggedInUserId) fetchPosts();
+    loadPosts();
   }, [loggedInUserId]);
 
   const toggleExpand = (postId) => {
@@ -75,6 +95,14 @@ const GetPosts = () => {
     setSelectedImages([]);
   };
 
+  const handleLike = async (postId) => {
+    try {
+      await incrementLike(postId, loggedInUserId, posts, setPosts);
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
   const handleFollowToggle = async (authorId) => {
     if (!loggedInUserId) {
       alert("Please log in to follow users.");
@@ -82,10 +110,7 @@ const GetPosts = () => {
     }
 
     try {
-      const response = await axios.post(`http://localhost:5000/follow/${authorId}`, {
-        userId: loggedInUserId,
-      });
-
+      const message = await followUser(authorId, loggedInUserId);
       setPosts((prevPosts) =>
         prevPosts.map((post) =>
           post.author?._id === authorId
@@ -93,11 +118,9 @@ const GetPosts = () => {
             : post
         )
       );
-
-      console.log(response.data.message);
-    } catch (error) {
-      console.error("Error updating follow status:", error);
-      alert(error.response?.data?.message || "Failed to update follow status. Please try again.");
+      console.log(message);
+    } catch (err) {
+      alert(err.message);
     }
   };
 
@@ -108,28 +131,87 @@ const GetPosts = () => {
     }
 
     try {
-      const response = await axios.post(
-        `http://localhost:5000/connections/connect/${authorId}`,
-        {
-          senderId: loggedInUserId, 
-        }
+      const message = await connectUser(authorId, loggedInUserId);
+      console.log(message);
+      const updatedPosts = posts.map((post) =>
+        post.author?._id === authorId
+          ? { ...post, isConnected: true }
+          : post
       );
-
-      setPosts((prevPosts) =>
-        prevPosts.map((post) =>
-          post.author?._id === authorId
-            ? { ...post, isConnected: true } 
-            : post
-        )
-      );
-
-      console.log(response.data.message);
-      alert("Connection request sent successfully!");
-    } catch (error) {
-      console.error("Error creating connection:", error);
-      alert(error.response?.data?.message || "Failed to create connection. Please try again.");
+      setPosts(updatedPosts);
+    } catch (err) {
+      alert(err.message);
     }
   };
+
+  const toggleCommentInput = (postId) => {
+    setCommentInputVisible((prevState) => ({
+      ...prevState,
+      [postId]: !prevState[postId],
+    }));
+  };
+
+  const handleCommentSubmit = async (postId) => {
+    if (!commentText.trim()) return;
+
+    try {
+      await addComment(postId, commentText, loggedInUserId);
+      const updatedComments = await fetchComments(postId);
+      setPostComments((prevState) => ({
+        ...prevState,
+        [postId]: updatedComments,
+      }));
+      setCommentText("");
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
+  const toggleReplyInput = (commentId) => {
+    setReplyInputVisible((prevState) => ({
+      ...prevState,
+      [commentId]: !prevState[commentId],
+    }));
+  };
+
+  const handleReplySubmit = async (postId, commentId) => {
+    if (!replyText.trim()) return;
+
+    try {
+      await addReply(postId, commentId, replyText, loggedInUserId);
+      const updatedComments = await fetchComments(postId);
+      setPostComments((prevState) => ({
+        ...prevState,
+        [postId]: updatedComments,
+      }));
+      setReplyText("");
+      setReplyInputVisible({});
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+  
+ const toggleViewReplies = (commentId) => {
+  setViewReplies((prevState) => ({
+    ...prevState,
+    [commentId]: !prevState[commentId], 
+  }));
+};
+
+  useEffect(() => {
+    const loadComments = async () => {
+      const comments = {};
+      for (const post of posts) {
+        const postComments = await fetchComments(post._id);
+        comments[post._id] = postComments;
+      }
+      setPostComments(comments);
+    };
+
+    if (posts.length > 0) {
+      loadComments();
+    }
+  }, [posts]);
 
   if (loading) return <div>Loading...</div>;
   if (error) return <div style={{ color: "red" }}>{error}</div>;
@@ -141,43 +223,41 @@ const GetPosts = () => {
           {post.author && post.author._id && post.author._id !== loggedInUserId && (
             <Box sx={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 1 }}>
               <Stack direction={"row"} spacing={1}>
-              <Button
-                variant="contained"
-                color={post.isFollowing ? "error" : "primary"}
-                size="small"
-                sx={{ borderRadius: '8px' }}
-                onClick={() => handleFollowToggle(post.author._id)}
-              >
-                {post.isFollowing ? "Unfollow" : "Follow"}
-              </Button>
-              {!post.isConnected  && (
-              <Button
-                variant="contained"
-                color={post.isConnected ? "success" : "secondary"}
-                size="small"
-                sx={{ borderRadius: '8px' }}
-                onClick={() => handleConnectToggle(post.author._id)}
-                disabled={post.isConnected} 
-              >
-             Connect
-              </Button>
-              )}
+                <Button
+                  variant="contained"
+                  color={post.isFollowing ? "error" : "primary"}
+                  size="small"
+                  sx={{ borderRadius: "8px" }}
+                  onClick={() => handleFollowToggle(post.author._id)}
+                >
+                  {post.isFollowing ? "Unfollow" : "Follow"}
+                </Button>
+                {!post.isConnected && (
+                  <Button
+                    variant="contained"
+                    color="secondary"
+                    size="small"
+                    sx={{ borderRadius: "8px" }}
+                    onClick={() => handleConnectToggle(post.author._id)}
+                  >
+                    Connect
+                  </Button>
+                )}
               </Stack>
             </Box>
           )}
           <CardContent>
-
-          <Stack direction={"row"} spacing={1}>
+            <Stack direction={"row"} spacing={1}>
               <Avatar
                 src={post.author?.photoURL}
                 alt={post.author?.displayName[0]}
                 sx={{ width: 50, height: 50, cursor: "pointer" }}
               />
-              <Typography variant="h6" sx={{ fontWeight: "bold"}}>
+              <Typography variant="h6" sx={{ fontWeight: "bold" }}>
                 {post.author?.displayName || "Unknown Author"}
               </Typography>
-            </Stack>   
-            <Typography>
+            </Stack>
+            <Typography color={theme === "dark" ? "text.secondary" : "text.primary"} sx={{ fontSize: "14px" }}>
               {expandedPosts[post._id] || post.content.length <= 50
                 ? post.content
                 : `${post.content.substring(0, 50)}...`}
@@ -225,33 +305,144 @@ const GetPosts = () => {
               </Box>
             )}
           </CardContent>
-          <Box sx={{ display: "flex", justifyContent: "flex-end", padding: "8px 16px", color: "gray" }}>
-                <Typography variant="caption">
-                  {new Date(post.timeStamp).toLocaleString()}
+
+          <Tooltip title="Like">
+            <IconButton
+              sx={{ padding: "8px 16px", paddingTop: "25px" }}
+              onClick={() => handleLike(post._id)}
+            >
+              {post.isLikedByUser ? (
+                <Favorite sx={{ color: "red" }} />
+              ) : (
+                <FavoriteBorderOutlined />
+              )}
+              <Typography>{post.likes.length || 0}</Typography>
+            </IconButton>
+          </Tooltip>
+
+          <Tooltip title="Comment">
+            <IconButton
+              sx={{ padding: "8px 16px", paddingTop: "25px" }}
+              onClick={() => toggleCommentInput(post._id)}
+            >
+              <CommentOutlined />
+              <Typography>{post.comments.length || 0}</Typography>
+            </IconButton>
+          </Tooltip>
+
+          {commentInputVisible[post._id] && (
+            <Stack direction={"column"} spacing={1}>
+              <Box sx={{ display: "flex", gap: 1, padding: "8px 16px" }}>
+                <TextField
+                  fullWidth
+                  variant="outlined"
+                  placeholder="Add a comment..."
+                  value={commentText}
+                  onChange={(e) => setCommentText(e.target.value)}
+                />
+                <Button
+                  variant="text"
+                  color="primary"
+                  onClick={() => handleCommentSubmit(post._id)}
+                >
+                  Post
+                </Button>
+              </Box>
+              <Box sx={{ marginTop: 2 }}>
+                <Typography variant="h6" sx={{ fontWeight: "bold" }}>
+                  Comments
                 </Typography>
+                {postComments[post._id]?.map((comment) => (
+                  <Box key={comment._id} sx={{ marginTop: 1 }}>
+                    <Stack direction={"row"} spacing={1}>
+                      <Avatar
+                        src={comment.user?.photoURL}
+                        alt={comment.user?.displayName[0]}
+                        sx={{ width: 20, height: 20, cursor: "pointer" }}
+                      />
+                      <Typography>
+                        {comment.user?.displayName || "Unknown User"}
+                      </Typography>
+                    </Stack>
+                    <Typography color="textSecondary">{comment.text}</Typography>
+                    <Button
+                      variant="text"
+                      onClick={() => toggleReplyInput(comment._id)}
+                    >
+                      Reply
+                    </Button>
+                    {replyInputVisible[comment._id] && (
+                      <Box sx={{ display: "flex", gap: 1, padding: "8px 16px" }}>
+                        <TextField
+                          fullWidth
+                          variant="outlined"
+                          placeholder={`Reply to ${comment.user?.displayName}`}
+                          value={replyText}
+                          onChange={(e) => setReplyText(e.target.value)}
+                        />
+                        <Button
+                          variant="text"
+                          color="primary"
+                          onClick={() => handleReplySubmit(post._id, comment._id)}
+                        >
+                          Post
+                        </Button>
+                      </Box>
+                    )}
+                    {comment.replies && comment.replies.length > 0 && (
+                      <Button onClick={() => toggleViewReplies(comment._id)}>
+                        {viewReplies[comment._id] ? "Hide Replies" : "View Replies"}
+                      </Button>
+                    )}
+                    {viewReplies[comment._id] && comment.replies && comment.replies.map((reply) => (
+                      <Box key={reply._id} sx={{ marginLeft: 10 }}>
+                        <Stack direction={"row"} spacing={1}>
+                          <Avatar
+                            src={reply.user?.photoURL}
+                            alt={reply.user?.displayName[0]}
+                            sx={{ width: 20, height: 20, cursor: "pointer" }}
+                          />
+                          <Typography>
+                            {reply.user?.displayName || "Unknown User"}
+                          </Typography>
+                        </Stack>
+                        <Typography color="textSecondary">{reply.text}</Typography>
+                      </Box>
+                    ))}
+                  
+                  </Box>
+                ))}
+              </Box>
+            </Stack>
+          )}
+          <Box sx={{ display: "flex", padding: "8px 16px", color: "gray" }}>
+            <Typography variant="caption">
+              {new Date(post.timeStamp).toLocaleString()}
+            </Typography>
           </Box>
         </Card>
-        
       ))}
       <Modal open={isModalOpen} onClose={closeModal}>
-        <Box sx={{
-          position: "fixed",
-          top: "50%",
-          left: "50%",
-          transform: "translate(-50%, -50%)",
-          width: "100vw",
-          height: "100vh",
-          backgroundColor: "rgba(0, 0, 0, 0.8)",
-          borderRadius: 2,
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          outline: "none",
-        }}>
+        <Box
+          sx={{
+            position: "fixed",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            width: "100vw",
+            height: "100vh",
+            backgroundColor: "rgba(0, 0, 0, 0.8)",
+            borderRadius: 2,
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            outline: "none",
+          }}
+        >
           <IconButton onClick={closeModal} sx={{ position: "absolute", top: 10, right: 10, color: "#fff" }}>
             <CloseIcon />
           </IconButton>
-          <Swiper modules={[Navigation, Pagination]} navigation pagination={{ clickable: true}} style={{ width: "80%", height: "100%" }}>
+          <Swiper modules={[Navigation, Pagination]} navigation pagination={{ clickable: true }} style={{ width: "80%", height: "100%" }}>
             {selectedImages.map((imgUrl, index) => (
               <SwiperSlide key={index}>
                 <img src={imgUrl} alt={`${index + 1}`} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
