@@ -41,6 +41,7 @@ const Profile = () => {
   const [mobileNumber, setMobileNumber] = useState(profile?.mobileNumber || '');
   const [photoURL, setPhotoURL] = useState(profile?.photoURL || 'https://via.placeholder.com/100');
   const [followers, setFollowers] = useState([]);
+  const [followersCount, setFollowersCount] = useState(0);
   const [posts, setPosts] = useState([]);
   const [connections, setConnections] = useState([]);
   const [followersModalOpen, setFollowersModalOpen] = useState(false);
@@ -72,6 +73,8 @@ const Profile = () => {
         ]);
 
         setFollowers(followersRes.data.followers || []);
+        setFollowersCount(followersRes.data.followersCount || 0);
+
         setPosts(postsRes.data || []);
         setConnections(connectionsRes.data.connections || []);
       } catch (err) {
@@ -98,6 +101,7 @@ const Profile = () => {
     setFollowers((prevFollowers) =>
       prevFollowers.filter((follower) => follower._id !== followerId)
     );
+    setFollowersCount((prevCount) => prevCount - 1); // Decrement the followers count
   }, []);
 
   const handleRemoveConnection = useCallback((connectionId) => {
@@ -307,7 +311,7 @@ const Profile = () => {
                     onClick={handleOpenFollowersModal}
                     sx={{ cursor: 'pointer' }}
                   >
-                    {followers.length}
+                    {followersCount}
                   </Typography>
                   <Typography
                     variant="body2"
