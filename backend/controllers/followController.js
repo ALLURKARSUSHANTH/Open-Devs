@@ -58,13 +58,24 @@ exports.follow = async (req, res) => {
 exports.getFollowers = async (req, res) => {
   try {
     const { userId } = req.params;
-    const user = await User.findById(userId).select("followers").populate("followers", "name displayName photoURL");
+
+    // Find the user and populate the followers
+    const user = await User.findById(userId)
+      .select("followers")
+      .populate("followers", "name displayName photoURL");
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    return res.status(200).json({ followers: user.followers });
+    // Calculate the number of followers
+    const followersCount = user.followers.length;
+
+    // Return the followers and followersCount
+    return res.status(200).json({
+      followers: user.followers,
+      followersCount: followersCount,
+    });
   } catch (error) {
     console.error("Error getting followers:", error);
     res.status(500).json({ message: "Failed to fetch followers" });

@@ -35,43 +35,39 @@ const FollowersList = memo(({ followers, open, onClose, loggedInUserId, onRemove
 
     const handleConfirmRemove = useCallback(async () => {
         if (!selectedFollowerId) {
-            console.error('No follower ID selected');
-            return;
+          console.error('No follower ID selected');
+          return;
         }
-    
+      
         setRemoving(true);
         try {
-            console.log('Sending request to remove follower:', {
-                followerId: selectedFollowerId,
-                userId: loggedInUserId,
-            });
-    
-            const response = await axios.delete(
-                `http://localhost:5000/follow/remove-follower/${selectedFollowerId}`,
-                {
-                    data: { userId: loggedInUserId },
-                }
-            );
-    
-            console.log('Backend response:', response.data);
-            onRemoveFollower(selectedFollowerId); // Update the parent component
-            enqueueSnackbar('Follower removed successfully!', { variant: 'success' });
-        } catch (error) {
-            console.error('Error removing follower:', error);
-            if (error.response) {
-                enqueueSnackbar(error.response.data.message || 'Failed to remove follower.', {
-                    variant: 'error',
-                });
-            } else {
-                enqueueSnackbar('Failed to remove follower. Please try again.', {
-                    variant: 'error',
-                });
+          const response = await axios.delete(
+            `http://localhost:5000/follow/remove-follower/${selectedFollowerId}`,
+            {
+              data: { userId: loggedInUserId },
             }
+          );
+      
+          console.log('Backend response:', response.data);
+          onRemoveFollower(selectedFollowerId); // Call the callback to update the parent component
+          enqueueSnackbar('Follower removed successfully!', { variant: 'success' });
+        } catch (error) {
+          console.error('Error removing follower:', error);
+          if (error.response) {
+            enqueueSnackbar(error.response.data.message || 'Failed to remove follower.', {
+              variant: 'error',
+            });
+          } else {
+            enqueueSnackbar('Failed to remove follower. Please try again.', {
+              variant: 'error',
+            });
+          }
         } finally {
-            setRemoving(false);
-            setConfirmOpen(false);
+          setRemoving(false);
+          setConfirmOpen(false);
         }
-    }, [selectedFollowerId, onRemoveFollower, enqueueSnackbar, loggedInUserId]);
+      }, [selectedFollowerId, onRemoveFollower, enqueueSnackbar, loggedInUserId]);
+      
     const handleCancelRemove = useCallback(() => {
         setConfirmOpen(false);
     }, []);
