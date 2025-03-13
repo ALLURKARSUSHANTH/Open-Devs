@@ -76,7 +76,6 @@ exports.getFollowers = async (req, res) => {
     return res.status(200).json({
       followers: user.followers, // Return the followers array
     });
-
   } catch (error) {
     console.error("Error getting followers count:", error);
     res.status(500).json({ error: error.message });
