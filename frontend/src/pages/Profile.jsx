@@ -19,9 +19,11 @@ import {
   Favorite as FollowersIcon,
   PhotoLibrary as PostsIcon,
 } from '@mui/icons-material';
+
 import FollowersList from '../components/FollowersList';
 import ConnectionsList from '../components/ConnectionsList';
 import PostsCard from '../components/PostsCard';
+
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -32,6 +34,7 @@ const Profile = () => {
     connections: 0,
   });
   const [loggedInUserId, setLoggedInUserId] = useState(null);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -79,6 +82,7 @@ const Profile = () => {
         setPosts(postsRes.data.posts || []);
         setConnections(connectionsRes.data.connections || []);
         
+
       } catch (err) {
         console.error('Error fetching counts:', err);
         setError(err.response?.data?.message || 'An error occurred while fetching data.');
@@ -98,6 +102,7 @@ const Profile = () => {
       console.error('Logout failed', error);
     }
   };
+
 
   const handleRemoveFollower = useCallback((followerId) => {
     setFollowers((prevFollowers) =>
