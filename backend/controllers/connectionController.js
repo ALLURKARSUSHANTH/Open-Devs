@@ -72,8 +72,57 @@ module.exports = (io) => {
     }
   };
 
+  const removeConnection = async (req, res) => {
+    try {
+      const { userId } = req.body; // ID of the logged-in user
+      const connectionId = req.params.connectionId; // ID of the user to remove from connections
+  
+      // Validate userId and connectionId
+      if (!userId || !connectionId) {
+        return res.status(400).json({ message: "Missing user ID or connection ID" });
+      }
+  
+      // Find the logged-in user
+      const user = await User.findById(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+  
+      // Find the connection user
+      const connectionUser = await User.findById(connectionId);
+      if (!connectionUser) {
+        return res.status(404).json({ message: "Connection user not found" });
+      }
+  
+      // Check if the connection exists in the logged-in user's connections array
+      const isConnectionExists = user.connections.includes(connectionId);
+      if (!isConnectionExists) {
+        return res.status(400).json({ message: "Connection does not exist" });
+      }
+  
+      // Remove the connection from both users
+      user.connections = user.connections.filter(
+        (id) => id.toString() !== connectionId
+      );
+      connectionUser.connections = connectionUser.connections.filter(
+        (id) => id.toString() !== userId
+      );
+  
+      // Save both users
+      await user.save();
+      await connectionUser.save();
+  
+      // Send a success response
+      res.status(200).json({ message: "Connection removed successfully" });
+    } catch (error) {
+      console.error("Error removing connection:", error);
+      res.status(500).json({ error: error.message });
+    }
+  };
+
   return {
     sendConnectionRequest,
     getConnections,
+    removeConnection,
   };
 };
