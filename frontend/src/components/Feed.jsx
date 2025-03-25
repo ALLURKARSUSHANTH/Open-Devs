@@ -224,7 +224,6 @@ const GetPosts = () => {
             <Box sx={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 1 }}>
               <Stack direction={"row"} spacing={1}>
                 <Button
-                  variant="contained"
                   color={post.isFollowing ? "error" : "primary"}
                   size="small"
                   sx={{ borderRadius: "8px" }}
