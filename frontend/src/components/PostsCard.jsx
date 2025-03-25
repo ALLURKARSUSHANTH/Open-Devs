@@ -40,7 +40,7 @@ const PostsCard = ({ posts }) => {
               {/* Post Header */}
               <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
                 <ListItemAvatar>
-                  <Avatar src={post.author?.photoURL} alt={post.author.displayName} />
+                  <Avatar src={post.author.photoURL} alt={post.author.displayName} />
                 </ListItemAvatar>
                 <ListItemText
                   primary={post.author.displayName}
@@ -96,13 +96,8 @@ const PostsCard = ({ posts }) => {
                   </Typography>
                   {post.comments.map((comment, index) => (
                     <Box key={index} sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                      <Avatar
-                        src={comment.user?.photoURL} // Use commenter's photo if available
-                        sx={{ width: 24, height: 24, mr: 1 }}
-                      />
-                      <Typography variant="body2">
-                        <strong>{comment.user?.displayName}:</strong> {comment.text}
-                      </Typography>
+                      <Avatar sx={{ width: 24, height: 24, mr: 1 }} />
+                      <Typography variant="body2">{comment}</Typography>
                     </Box>
                   ))}
                 </Box>
