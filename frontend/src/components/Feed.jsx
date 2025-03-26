@@ -35,6 +35,7 @@ import {
   fetchComments,
   addReply,
 } from "../services/posts";
+import socket from "../context/socket"; // Import the socket instance
 
 const GetPosts = () => {
   const [posts, setPosts] = useState([]);
@@ -118,6 +119,20 @@ const GetPosts = () => {
             : post
         )
       );
+      const updatedPost = posts.find((post) => post.author?._id === authorId);
+      if (!updatedPost?.isFollowing) {
+        // If the user is now following, emit the "follow" event
+        socket.emit("follow", {
+          userId: loggedInUserId, // The user who is following
+          followUserId: authorId, // The user being followed
+        });
+      } else {
+        // If the user is now unfollowing, emit the "unfollow" event
+        socket.emit("unfollow", {
+          userId: loggedInUserId, // The user who is unfollowing
+          followUserId: authorId, // The user being unfollowed
+        });
+      }
       console.log(message);
     } catch (err) {
       alert(err.message);
@@ -224,7 +239,6 @@ const GetPosts = () => {
             <Box sx={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 1 }}>
               <Stack direction={"row"} spacing={1}>
                 <Button
-                  variant="contained"
                   color={post.isFollowing ? "error" : "primary"}
                   size="small"
                   sx={{ borderRadius: "8px" }}
