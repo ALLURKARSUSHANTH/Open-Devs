@@ -66,30 +66,27 @@ exports.getUserByFirebaseUid = async (req, res) => {
     return res.status(500).json({ error: error.message });
   }
 };
-
+// controllers/userController.js
 exports.addUserSkills = async (req, res) => {
-  const { skills } = req.body;
   try {
-    const user = await User.findById(req.params.firebaseUid);
+    const { skills } = req.body;
+    const { firebaseUid } = req.params;
+
+    const user = await User.findOneAndUpdate(
+      { _id: firebaseUid },
+      { $addToSet: { skills: { $each: skills } } }, // Prevents duplicates
+      { new: true }
+    );
+
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
 
-    // Add new skills while avoiding duplicates
-    const newSkills = Array.isArray(skills) ? skills : [skills];
-    newSkills.forEach(skill => {
-      if (!user.skills.includes(skill)) {
-        user.skills.push(skill);
-      }
-    });
-
-    await user.save();
-    return res.json(user);
+    res.json(user);
   } catch (error) {
-    return res.status(500).json({ error: error.message });
+    res.status(500).json({ error: error.message });
   }
 };
-
 /*exports.removeUserSkill = async (req, res) => {
   const { skill } = req.body;
   try {

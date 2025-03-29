@@ -16,7 +16,7 @@ const io = initializeSocket(server);
 // CORS middleware
 app.use(cors({
   origin: "*",
-  methods: "GET,POST,PUT,DELETE",
+  methods: "GET,POST,PUT,DELETE,PATCH,OPTIONS",
   credentials: true,
   allowedHeaders: "Content-Type,Authorization"
 }));

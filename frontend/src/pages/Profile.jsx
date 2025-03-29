@@ -75,7 +75,6 @@ const Profile = () => {
           axios.get(`http://localhost:5000/follow/${loggedInUserId}/followers-count`),
           axios.get(`http://localhost:5000/posts/getMyPosts/${loggedInUserId}`),
           axios.get(`http://localhost:5000/connections/connected/${loggedInUserId}`),
-          //axios.patch(`http://localhost:5000/user/skills/${loggedInUserId}`, { skills }),
         ]);
 
         setFollowers(followersRes.data.followers || []);
@@ -162,17 +161,45 @@ const Profile = () => {
     }
   };
 
-  const handleAddSkill = (skill = null) => {
+  const handleAddSkill = async (skill = null) => {
     const skillToAdd = skill || newSkill.trim();
     if (skillToAdd && !skills.includes(skillToAdd)) {
-      setSkills([...skills, skillToAdd]);
-      setNewSkill('');
-      setSkillSuggestions([]);
+      try {
+        // Update local state immediately for better UX
+        const updatedSkills = [...skills, skillToAdd];
+        setSkills(updatedSkills);
+        setNewSkill('');
+        setSkillSuggestions([]);
+        
+        // Send the update to the backend
+        await axios.patch(`http://localhost:5000/users/skills/${loggedInUserId}`, {
+          skills: updatedSkills
+        });
+      } catch (error) {
+        console.error('Error updating skills:', error);
+        // Revert local state if API call fails
+        setSkills(skills);
+        setError('Failed to update skills.');
+      }
     }
   };
 
-  const handleRemoveSkill = (skillToRemove) => {
-    setSkills(skills.filter(skill => skill !== skillToRemove));
+  const handleRemoveSkill = async (skillToRemove) => {
+    try {
+      // Update local state immediately for better UX
+      const updatedSkills = skills.filter(skill => skill !== skillToRemove);
+      setSkills(updatedSkills);
+      
+      // Send the update to the backend
+      await axios.patch(`http://localhost:5000/users/skills/${loggedInUserId}`, {
+        skills: updatedSkills
+      });
+    } catch (error) {
+      console.error('Error removing skill:', error);
+      // Revert local state if API call fails
+      setSkills(skills);
+      setError('Failed to remove skill.');
+    }
   };
 
   const handleKeyPress = (e) => {
@@ -285,7 +312,6 @@ const Profile = () => {
                         <Button
                           variant="contained"
                           onClick={() => handleAddSkill()}
-                          disabled={!newSkill.trim()}
                           size="small"
                           sx={{ borderRadius: '4px' }}
                         >
