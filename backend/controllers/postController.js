@@ -189,3 +189,63 @@ exports.addReply = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+exports.deletePost = async (req, res) => {
+  const { id } = req.params;
+  
+  console.log('--- DELETE POST REQUEST ---');
+  console.log('Post ID:', id);
+  console.log('Authorization header:', req.headers.authorization);
+  
+  try {
+    // Verify JWT token first
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      console.log('No token provided');
+      return res.status(401).json({ message: "Authentication required" });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    console.log('Decoded user ID:', decoded.userId);
+
+    const post = await Post.findById(id);
+    if (!post) {
+      console.log('Post not found in database');
+      return res.status(404).json({ message: "Post not found" });
+    }
+
+    // Verify post ownership
+    if (post.author.toString() !== decoded.userId) {
+      console.log('User not authorized to delete this post');
+      return res.status(403).json({ message: "Unauthorized to delete this post" });
+    }
+
+    // Remove post from user's posts array
+    const user = await User.findById(decoded.userId);
+    if (user) {
+      user.posts.pull(post._id);
+      await user.save();
+      console.log('Post removed from user document');
+    }
+
+    // Delete the post
+    await Post.findByIdAndDelete(id);
+    console.log('Post deleted from database');
+
+    res.status(200).json({ message: "Post deleted successfully" });
+  } catch (error) {
+    console.error('Detailed error:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
+    
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({ message: "Invalid token" });
+    }
+    
+    res.status(500).json({ 
+      message: "Error deleting post",
+      error: error.message 
+    });
+  }
+}
