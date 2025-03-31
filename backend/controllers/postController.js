@@ -12,7 +12,7 @@ const IMGBB_API_KEY = process.env.IMGBB_API_KEY;
 exports.uploadMiddleware = upload.array("images", 5);
 
 exports.createPost = async (req, res) => {
-  const { content, author } = req.body;
+  const { content, author,codeSnippet} = req.body;
   const files = req.files;
   console.log("Received files:", req.files);
   console.log("Received content:", content);
@@ -48,7 +48,13 @@ exports.createPost = async (req, res) => {
     console.log("IMGBB_API_KEY:", IMGBB_API_KEY);
 
     // Create new post
-    const post = new Post({ content, author, imgUrls });
+    const postData = { content, author, imgUrls };
+
+    // Only add the code field if it is provided (optional)
+    if (codeSnippet) {
+      postData.codeSnippet = codeSnippet;
+    }
+    const post = new Post(postData);
     await post.save();
 
     // Update user with new post ID
@@ -78,7 +84,7 @@ exports.getPosts = async (req, res) => {
   }
 };
 
-exports.getMyPosts = async (req, res) => {
+exports.getProfile = async (req, res) => {
   try {
     const { id } = req.params;
     const posts = await Post.find({author:id})
@@ -91,6 +97,7 @@ exports.getMyPosts = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
 exports.getLikes = async (req, res) => {
   try {
     const { id } = req.params;

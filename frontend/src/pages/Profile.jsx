@@ -1,7 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react'; //comments not being shown in mobile view
 import { useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import { getAuth, onAuthStateChanged } from 'firebase/auth';
 import axios from 'axios';
 import {
   Typography,
@@ -12,20 +11,63 @@ import {
   Button,
   TextField,
   Box,
+  useMediaQuery,
+  CircularProgress,
+  Modal,
+  IconButton,
+  Stack,
 } from '@mui/material';
 import { logout } from '../firebase/auth';
 import {
   People as ConnectionsIcon,
   Favorite as FollowersIcon,
   PhotoLibrary as PostsIcon,
+  Close as CloseIcon,
 } from '@mui/icons-material';
-
+import { Swiper, SwiperSlide } from 'swiper/react';
+import { Navigation, Pagination } from 'swiper/modules';
+import 'swiper/css';
+import 'swiper/css/navigation';
+import 'swiper/css/pagination';
 import FollowersList from '../components/FollowersList';
 import ConnectionsList from '../components/ConnectionsList';
-import PostsCard from '../components/PostsCard';
-
+import PostCard from '../components/PostsCard';
+import CommentsSection from '../components/Comments';
+import { fetchComments} from '../services/posts';
+import usePostActions from '../components/postActions';
 
 const Profile = () => {
+  const isMobile = useMediaQuery((theme) => theme.breakpoints.down("sm"));
+  const {
+    theme,
+    loading,
+    error,
+    loggedInUserId,  
+    selectedImages,
+    isModalOpen,
+    replyInputVisible,
+    replyText,
+    viewReplies,
+    commentsDrawerOpen,
+    commentText,
+    setLoading,
+    setError,
+    setCommentText,
+    setReplyText,
+    setCommentsDrawerOpen,
+    toggleExpand,
+    openModal,
+    closeModal,
+    handleLike,
+    handleFollowToggle,
+    handleConnectToggle,
+    toggleCommentInput,
+    handleCommentSubmit,
+    toggleReplyInput,
+    handleReplySubmit,
+    toggleViewReplies
+  } = usePostActions(isMobile); 
+
   const navigate = useNavigate();
   const profile = useSelector((state) => state.auth.profile);
   const [counts, setCounts] = useState({
@@ -33,10 +75,6 @@ const Profile = () => {
     posts: 0,
     connections: 0,
   });
-  const [loggedInUserId, setLoggedInUserId] = useState(null);
-
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
 
   // State for editable fields
   const [isEditing, setIsEditing] = useState(false);
@@ -50,49 +88,51 @@ const Profile = () => {
   const [followers, setFollowers] = useState([]);
   const [connections, setConnections] = useState([]);
   const [posts, setPosts] = useState([]);
+  const [selectedPost, setSelectedPost] = useState(null);
+
+  // For post expansion and comments
+  const [postComments, setPostComments] = useState({});
 
   const [followersModalOpen, setFollowersModalOpen] = useState(false);
   const [connectionsModalOpen, setConnectionsModalOpen] = useState(false);
 
   useEffect(() => {
-    const auth = getAuth();
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        setLoggedInUserId(user.uid);
-      } else {
-        setLoggedInUserId(null);
-      }
-    });
-
-    return () => unsubscribe();
-  }, []);
-
-  useEffect(() => {
     const fetchCounts = async () => {
       if (!loggedInUserId) return;
-
       try {
         const [followersRes, postsRes, connectionsRes] = await Promise.all([
           axios.get(`http://localhost:5000/follow/${loggedInUserId}/followers-count`),
-          axios.get(`http://localhost:5000/posts/getMyPosts/${loggedInUserId}`),
+          axios.get(`http://localhost:5000/posts/getProfile/${loggedInUserId}`),
           axios.get(`http://localhost:5000/connections/connected/${loggedInUserId}`),
         ]);
 
         setFollowers(followersRes.data.followers || []);
         setPosts(postsRes.data.posts || []);
         setConnections(connectionsRes.data.connections || []);
-        
+
+        setCounts({
+          followers: followersRes.data.followers?.length || 0,
+          posts: postsRes.data.posts?.length || 0,
+          connections: connectionsRes.data.connections?.length || 0,
+        });
+
+        // Load comments for each post
+        const comments = {};
+        for (const post of postsRes.data.posts || []) {
+          const postComments = await fetchComments(post._id);
+          comments[post._id] = postComments;
+        }
+        setPostComments(comments);
 
       } catch (err) {
         console.error('Error fetching counts:', err);
         setError(err.response?.data?.message || 'An error occurred while fetching data.');
-      } finally {
-        setLoading(false);
-      }
+      } 
     };
-
+    
     fetchCounts();
   }, [loggedInUserId]);
+
 
   const handleLogout = async () => {
     try {
@@ -102,7 +142,6 @@ const Profile = () => {
       console.error('Logout failed', error);
     }
   };
-
 
   const handleRemoveFollower = useCallback((followerId) => {
     setFollowers((prevFollowers) =>
@@ -153,15 +192,34 @@ const Profile = () => {
   const handleOpenConnectionsModal = () => setConnectionsModalOpen(true);
   const handleCloseConnectionsModal = () => setConnectionsModalOpen(false);
 
+  useEffect(() => {
+    const loadComments = async () => {
+      const comments = {};
+      for (const post of posts) {
+        const postComments = await fetchComments(post._id);
+        comments[post._id] = postComments;
+      }
+      setPostComments(comments);
+    };
+
+    if (posts.length > 0) {
+      loadComments();
+    }
+  }, [posts]);
+
   if (loading) {
-    return <Typography variant="h6">Loading...</Typography>;
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+        <CircularProgress />
+      </Box>
+    );
   }
 
   if (error) {
     return (
-      <Typography variant="h6" color="error" sx={{ textAlign: 'center', marginTop: 4 }}>
-        {error}
-      </Typography>
+      <Box sx={{ color: 'error.main', p: 2 }}>
+        Error: {error}
+      </Box>
     );
   }
 
@@ -386,10 +444,167 @@ const Profile = () => {
         </Grid>
       </Grid>
 
-      {/* PostsCard spans the entire width */}
-      <Box sx={{ width: '100%', padding: 0 }}>
-        <PostsCard posts={posts} />
+      {/* Posts section */}
+      <Box sx={{ p: 2,
+        paddingBottom:"95px"
+       }}>
+        {posts.length === 0 ? (
+          <Box sx={{ p: 2, textAlign: 'center' }}>
+            <Typography>No posts available</Typography>
+          </Box>
+        ) : isMobile ?  (
+          // Mobile view - single column with comments drawer
+          <>
+            <Stack spacing={3}>
+            {posts.map((post) => (
+                <PostCard
+                key={post._id}
+                post={post}
+                loggedInUserId={loggedInUserId}
+                handleLike={handleLike}
+                toggleCommentInput={toggleCommentInput}
+                toggleExpand={toggleExpand}
+                openModal={openModal}
+                theme={theme}
+            />
+            ))}
+          </Stack>
+          
+          <CommentsSection
+            comments={postComments[selectedPost?._id] || []}
+            commentText={commentText}
+            setCommentText={setCommentText}
+            handleCommentSubmit={handleCommentSubmit}
+            replyText={replyText}
+            setReplyText={setReplyText}
+            replyInputVisible={replyInputVisible}
+            toggleReplyInput={toggleReplyInput}
+            handleReplySubmit={handleReplySubmit}
+            viewReplies={viewReplies}
+            toggleViewReplies={toggleViewReplies}
+            postId={selectedPost?._id}
+            mobileOpen={commentsDrawerOpen}
+            handleMobileClose={() => setCommentsDrawerOpen(false)}
+          />
+          </>
+        ) : selectedPost ? (
+          // Desktop expanded view with comments on right and posts below
+          <Box>
+            <Box sx={{ display: 'flex', mb: 4 }}>
+              <Box sx={{ flex: 2 }}>
+                <PostCard 
+                  post={selectedPost}
+                  loggedInUserId={loggedInUserId}
+                  onClick={() => setSelectedPost(null)}
+                  toggleExpand={toggleExpand}
+                  handleLike={handleLike}
+                  openModal={openModal}
+                  theme={theme}
+                  isExpanded
+                />
+              </Box>
+              
+              <Box sx={{ flex: 1 }}>
+                <CommentsSection
+                  comments={postComments[selectedPost._id] || []}
+                  commentText={commentText}
+                  setCommentText={setCommentText}
+                  handleCommentSubmit={() => handleCommentSubmit(selectedPost._id)}
+                  replyText={replyText}
+                  setReplyText={setReplyText}
+                  replyInputVisible={replyInputVisible}
+                  toggleReplyInput={toggleReplyInput}
+                  handleReplySubmit={handleReplySubmit}
+                  viewReplies={viewReplies}
+                  toggleViewReplies={toggleViewReplies}
+                  postId={selectedPost._id}
+                />
+              </Box>
+            </Box>
+
+            <Box>
+              <Typography variant="h6" sx={{ mb: 2 }}>
+                More Posts
+              </Typography>
+              <Grid container spacing={2}>
+                {posts
+                  .filter(p => p._id !== selectedPost._id)
+                  .map(post => (
+                    <Grid item xs={12} sm={6} md={4} key={post._id}>
+                      <PostCard 
+                        post={post}
+                        handleLike={handleLike}
+                        onClick={() => setSelectedPost(post)}
+                        loggedInUserId={loggedInUserId}
+                        openModal={openModal}
+                        theme={theme}
+                      />
+                    </Grid>
+                  ))}
+              </Grid>
+            </Box>
+          </Box>
+        ) : (
+          // Desktop grid view
+          <Grid container spacing={3}>
+            {posts.map((post) => (
+              <Grid item xs={12} sm={6} md={4} lg={3} key={post._id}>
+                <PostCard
+                  post={post}
+                  onClick={() => setSelectedPost(post)}
+                  handleLike={handleLike}
+                  loggedInUserId={loggedInUserId}
+                  openModal={openModal}
+                />
+              </Grid>
+            ))}
+          </Grid>
+        )}
       </Box>
+
+      {/* Image modal */}
+      <Modal open={isModalOpen} onClose={closeModal}>
+        <Box
+          sx={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.8)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}
+        >
+          <IconButton
+            onClick={closeModal}
+            sx={{ position: 'absolute', top: 16, right: 16, color: 'white' }}
+          >
+            <CloseIcon />
+          </IconButton>
+          <Swiper
+            modules={[Navigation, Pagination]}
+            navigation
+            pagination={{ clickable: true }}
+            style={{ width: '80%', height: '80%' }}
+          >
+            {selectedImages.map((img, index) => (
+              <SwiperSlide key={index}>
+                <img
+                  src={img}
+                  alt={`Slide ${index}`}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'contain',
+                  }}
+                />
+              </SwiperSlide>
+            ))}
+          </Swiper>
+        </Box>
+      </Modal>
     </Box>
   );
 };

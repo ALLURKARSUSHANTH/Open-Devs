@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 
 const PostSchema = new mongoose.Schema({
   content: String,
+  codeSnippet : String,
   author: { type: String, ref: "User" },
   imgUrls: [String], 
   likes: [{ type: String, ref: "User" }],
