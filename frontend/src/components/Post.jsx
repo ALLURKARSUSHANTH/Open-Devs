@@ -17,6 +17,8 @@ const Post = () => {
   const editorRef = useRef(null);
   const navigate = useNavigate();
 
+  const API_URL = import.meta.env.VITE_API_URL;
+
   useEffect(() => {
     const user = auth.currentUser;
     if (user) {
@@ -91,7 +93,7 @@ const Post = () => {
     });
 
     try {
-      const response = await axios.post("http://localhost:5000/posts/create", formData, {
+      const response = await axios.post(`${API_URL}/posts/create`, formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },

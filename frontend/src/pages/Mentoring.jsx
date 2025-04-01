@@ -11,6 +11,8 @@ const Mentoring = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [loggedInUserId, setLoggedInUserId] = useState(null);
+  const API_URL = import.meta.env.VITE_API_URL;
+
 
   useEffect(() => {
     const auth = getAuth();
@@ -24,7 +26,7 @@ const Mentoring = () => {
     const fetchRole = async () => {
       if (!loggedInUserId) return;
       try {
-        const response = await axios.get(`http://localhost:5000/users/firebase/${loggedInUserId}`);
+        const response = await axios.get(`${API_URL}/users/firebase/${loggedInUserId}`);
         setRole(response.data.role);
       } catch (err) {
         setError(err.response?.data?.message || 'Error fetching role');

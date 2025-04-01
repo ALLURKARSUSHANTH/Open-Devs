@@ -12,6 +12,8 @@ const Mentee = () => {
   const [rating, setRating] = useState(0); // Store rating value
   const [feedback, setFeedback] = useState(''); // Store feedback message
   const [selectedMentor, setSelectedMentor] = useState(null); // Mentor currently being rated
+  const API_URL = import.meta.env.VITE_API_URL;
+
 
   useEffect(() => {
     const auth = getAuth();
@@ -26,7 +28,7 @@ const Mentee = () => {
       if (!loggedInUserId) return;
       try {
         setLoading(true);
-        const response = await axios.get('http://localhost:5000/mentor/mentors', {
+        const response = await axios.get(`${API_URL}/mentor/mentors`, {
           params: { currentUserId: loggedInUserId },
         });
     
@@ -59,7 +61,7 @@ const Mentee = () => {
 
   const requestMentorship = async (mentorId) => {
     try {
-      await axios.post('http://localhost:5000/mentor/request-mentorship', {
+      await axios.post(`${API_URL}/mentor/request-mentorship`, {
         mentorId,
         menteeId: loggedInUserId,
       });
@@ -71,7 +73,7 @@ const Mentee = () => {
 
   const fetchMentorDetails = async (mentorId) => {
     try {
-      const response = await axios.get(`http://localhost:5000/mentor/${mentorId}`);
+      const response = await axios.get(`${API_URL}/mentor/${mentorId}`);
       return response.data;
     } catch (error) {
       console.error(error);
@@ -95,7 +97,7 @@ const Mentee = () => {
     }
 
     try {
-      await axios.post('http://localhost:5000/mentor/submit-rating', {
+      await axios.post(`${API_URL}/mentor/submit-rating`, {
         mentorId,
         rating,
         feedback,
