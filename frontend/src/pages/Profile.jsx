@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useCallback } from "react"; //comments not being shown in mobile view
-import { useSelector } from "react-redux";
-import { Meta, useNavigate } from "react-router-dom";
-import axios from "axios";
+import React, { useState, useEffect, useCallback } from 'react'; //comments not being shown in mobile view
+import { useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
+import { skillsList } from '../services/Skills';
+import axios from 'axios';
 import {
   Typography,
   Avatar,
@@ -15,6 +16,7 @@ import {
   CircularProgress,
   Modal,
   IconButton,
+  Chip,
   Stack,
 } from "@mui/material";
 import { logout } from "../firebase/auth";
@@ -86,7 +88,6 @@ const Profile = () => {
     mobileNumber: profile?.mobileNumber || "",
     photoURL: profile?.photoURL || "",
   });
-
   const [followers, setFollowers] = useState([]);
   const [connections, setConnections] = useState([]);
   const [posts, setPosts] = useState([]);
@@ -97,6 +98,9 @@ const Profile = () => {
 
   const [followersModalOpen, setFollowersModalOpen] = useState(false);
   const [connectionsModalOpen, setConnectionsModalOpen] = useState(false);
+  const [skills, setSkills] = useState(profile?.skills || []);
+  const [newSkill, setNewSkill] = useState('');
+  const [skillSuggestions, setSkillSuggestions] = useState([]);
 
   useEffect(() => {
     const fetchCounts = async () => {
@@ -164,7 +168,10 @@ const Profile = () => {
 
   const handleSave = async () => {
     try {
-      await axios.put(`${API_URL}/${loggedInUserId}`, profileData);
+      await axios.put(`http://localhost:5000/profile/${loggedInUserId}`, {
+        ...profileData,
+        skills,
+      });
       setIsEditing(false);
     } catch (error) {
       console.error("Error updating profile:", error);
@@ -190,6 +197,67 @@ const Profile = () => {
         }
       };
       reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSkillInputChange = (e) => {
+    const value = e.target.value;
+    setNewSkill(value);
+
+    if (value.length > 0) {
+      const matches = skillsList.filter(skill =>
+        skill.toLowerCase().includes(value.toLowerCase())
+      );
+      setSkillSuggestions(matches);
+    } else {
+      setSkillSuggestions([]);
+    }
+  };
+
+  const handleAddSkill = async (skill = null) => {
+    const skillToAdd = skill || newSkill.trim();
+    if (skillToAdd && !skills.includes(skillToAdd)) {
+      try {
+        // Update local state immediately for better UX
+        const updatedSkills = [...skills, skillToAdd];
+        setSkills(updatedSkills);
+        setNewSkill('');
+        setSkillSuggestions([]);
+        
+        // Send the update to the backend
+        await axios.patch(`http://localhost:5000/users/skills/${loggedInUserId}`, {
+          skills: updatedSkills
+        });
+      } catch (error) {
+        console.error('Error updating skills:', error);
+        // Revert local state if API call fails
+        setSkills(skills);
+        setError('Failed to update skills.');
+      }
+    }
+  };
+
+  const handleRemoveSkill = async (skillToRemove) => {
+    try {
+      // Update local state immediately for better UX
+      const updatedSkills = skills.filter(skill => skill !== skillToRemove);
+      setSkills(updatedSkills);
+      
+      // Send the update to the backend
+      await axios.patch(`http://localhost:5000/users/skills/${loggedInUserId}`, {
+        skills: updatedSkills
+      });
+    } catch (error) {
+      console.error('Error removing skill:', error);
+      // Revert local state if API call fails
+      setSkills(skills);
+      setError('Failed to remove skill.');
+    }
+  };
+
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      handleAddSkill();
     }
   };
 
@@ -320,6 +388,83 @@ const Profile = () => {
                         margin="normal"
                       />
                     </Grid>
+
+                    {/* Skills Section */}
+                    <Grid item>
+                      <Typography variant="subtitle1" sx={{ marginBottom: 1, fontWeight: 'bold' }}>
+                        Skills
+                      </Typography>
+
+                      <Typography variant="body2" sx={{ marginBottom: 1 }}>
+                        Enter a skill
+                      </Typography>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, marginBottom: 2 }}>
+                        <TextField
+                          value={newSkill}
+                          onChange={handleSkillInputChange}
+                          onKeyPress={handleKeyPress}
+                          placeholder="Type to search skills"
+                          size="small"
+                          sx={{ flexGrow: 1 }}
+                          fullWidth
+                        />
+                        <Button
+                          variant="contained"
+                          onClick={() => handleAddSkill()}
+                          size="small"
+                          sx={{ borderRadius: '4px' }}
+                        >
+                          Add
+                        </Button>
+                      </Box>
+
+                      {skillSuggestions.length > 0 && (
+                        <Box sx={{ marginBottom: 2 }}>
+                          <Typography variant="body2" sx={{ marginBottom: 1 }}>
+                            Skill suggestions
+                          </Typography>
+                          <Grid container spacing={1}>
+                            {skillSuggestions.slice(0, 10).map((skill, index) => (
+                              <Grid item key={index}>
+                                <Button
+                                  variant="outlined"
+                                  onClick={() => handleAddSkill(skill)}
+                                  sx={{
+                                    textTransform: 'none',
+                                    borderRadius: '20px',
+                                    padding: '4px 12px',
+                                    fontSize: '0.875rem',
+                                    margin: '2px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '4px'
+                                  }}
+                                >
+                                  <span style={{ fontSize: '1rem' }}>+</span> {skill}
+                                </Button>
+                              </Grid>
+                            ))}
+                          </Grid>
+                        </Box>
+                      )}
+
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
+                        {skills.map((skill, index) => (
+                          <Chip
+                            key={index}
+                            label={skill}
+                            onDelete={() => handleRemoveSkill(skill)}
+                            sx={{
+                              backgroundColor: '#e3f2fd',
+                              '& .MuiChip-deleteIcon': {
+                                color: '#1976d2'
+                              }
+                            }}
+                          />
+                        ))}
+                      </Box>
+                    </Grid>
+
                     <Grid item>
                       <Card
                         sx={{
@@ -403,6 +548,22 @@ const Profile = () => {
                     <Typography variant="body1" color="text.secondary">
                       {profileData.mobileNumber || "No mobile number available"}
                     </Typography>
+                    {skills.length > 0 && (
+                      <Box sx={{ marginTop: 2 }}>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
+                          Skills:
+                        </Typography>
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, marginTop: 1 }}>
+                          {skills.map((skill, index) => (
+                            <Chip
+                              key={index}
+                              label={skill}
+                              sx={{ backgroundColor: '#e3f2fd' }}
+                            />
+                          ))}
+                        </Box>
+                      </Box>
+                    )}
                   </>
                 )}
 

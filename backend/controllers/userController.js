@@ -1,11 +1,18 @@
+// controllers/userController.js
 const User = require('../models/User');
 
 exports.createOrGetUser = async (req, res) => {
-  const { _id, email, displayName,photoURL} = req.body;
+  const { _id, email, displayName, photoURL } = req.body;
   try {
-    let user = await User.findOne({ _id }); 
+    let user = await User.findOne({ _id });
     if (!user) {
-      user = new User({ _id, email, displayName,photoURL : photoURL || "" });
+      user = new User({ 
+        _id, 
+        email, 
+        displayName, 
+        photoURL: photoURL || "",
+        skills: []  // Initialize with empty skills array
+      });
       await user.save();
     }
     return res.status(200).json(user);
@@ -21,13 +28,14 @@ exports.updateProfile = async (req, res) => {
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
-    user.displayName = displayName || user.displayName;
-    user.photoURL = photoURL || user.photoURL;
-    user.skills = skills || user.skills;
+    
+    if (displayName) user.displayName = displayName;
+    if (photoURL) user.photoURL = photoURL;
+    if (skills) user.skills = skills;
+    
     await user.save();
     return res.json(user);
-  }
-  catch (error) {
+  } catch (error) {
     return res.status(500).json({ error: error.message });
   }
 };
@@ -35,7 +43,12 @@ exports.updateProfile = async (req, res) => {
 exports.searchUser = async (req, res) => {
   const { query } = req.params;
   try {
-    const users = await User.find({ displayName: { $regex: query, $options: "i" } });
+    const users = await User.find({ 
+      $or: [
+        { displayName: { $regex: query, $options: "i" } },
+        { skills: { $regex: query, $options: "i" } }
+      ]
+    });
     return res.json(users);
   } catch (error) {
     return res.status(500).json({ error: error.message });
@@ -53,3 +66,39 @@ exports.getUserByFirebaseUid = async (req, res) => {
     return res.status(500).json({ error: error.message });
   }
 };
+// controllers/userController.js
+exports.addUserSkills = async (req, res) => {
+  try {
+    const { skills } = req.body;
+    const { firebaseUid } = req.params;
+
+    const user = await User.findOneAndUpdate(
+      { _id: firebaseUid },
+      { $addToSet: { skills: { $each: skills } } }, // Prevents duplicates
+      { new: true }
+    );
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+/*exports.removeUserSkill = async (req, res) => {
+  const { skill } = req.body;
+  try {
+    const user = await User.findById(req.params.firebaseUid);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    user.skills = user.skills.filter(s => s !== skill);
+    await user.save();
+    return res.json(user);
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+};*/
