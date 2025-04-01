@@ -8,7 +8,8 @@ import {
   Avatar,
   Stack,
   Tooltip,
-  Box
+  Box,
+  CircularProgress
 } from '@mui/material';
 import {
   FavoriteBorderOutlined,
@@ -31,7 +32,80 @@ const PostCard = ({
   theme
 }) => {
   const [editorLoaded, setEditorLoaded] = useState(false);
+  const [localState, setLocalState] = useState({
+    isLiked: post.isLikedByUser,
+    likeCount: post.likes?.length || 0,
+    isFollowing: post.isFollowing,
+    isConnecting: false,
+    isConnected: post.isConnected
+  });
+
   const isAuthor = post.author?._id === loggedInUserId;
+
+  const handleOptimisticLike = async (e, postId) => {
+    e.stopPropagation();
+    const wasLiked = localState.isLiked;
+    const newLikeCount = wasLiked ? localState.likeCount - 1 : localState.likeCount + 1;
+    
+    setLocalState(prev => ({
+      ...prev,
+      isLiked: !wasLiked,
+      likeCount: newLikeCount
+    }));
+
+    try {
+      await handleLike(postId);
+    } catch (error) {
+      // Revert if the API call fails
+      setLocalState(prev => ({
+        ...prev,
+        isLiked: wasLiked,
+        likeCount: localState.likeCount
+      }));
+    }
+  };
+
+  const handleOptimisticFollow = async (e, userId) => {
+    e.stopPropagation();
+    const wasFollowing = localState.isFollowing;
+    
+    setLocalState(prev => ({
+      ...prev,
+      isFollowing: !wasFollowing
+    }));
+
+    try {
+      await handleFollowToggle(userId);
+    } catch (error) {
+      // Revert if the API call fails
+      setLocalState(prev => ({
+        ...prev,
+        isFollowing: wasFollowing
+      }));
+    }
+  };
+
+  const handleOptimisticConnect = async (e, userId) => {
+    e.stopPropagation();
+    setLocalState(prev => ({
+      ...prev,
+      isConnecting: true
+    }));
+
+    try {
+      await handleConnectToggle(userId);
+      setLocalState(prev => ({
+        ...prev,
+        isConnected: true,
+        isConnecting: false
+      }));
+    } catch (error) {
+      setLocalState(prev => ({
+        ...prev,
+        isConnecting: false
+      }));
+    }
+  };
 
   return (
     <Card
@@ -41,6 +115,11 @@ const PostCard = ({
         height: "100%",
         display: "flex",
         flexDirection: "column",
+        transition: 'all 0.3s ease',
+        '&:hover': {
+          boxShadow: '0 8px 16px rgba(0,0,0,0.1)',
+          transform: 'translateY(-2px)'
+        }
       }}
       onClick={!isExpanded ? onClick : undefined}
     >
@@ -49,28 +128,25 @@ const PostCard = ({
         <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 1 }}>
           <Stack direction="row" spacing={1}>
             <Button
-              color={post.isFollowing ? "error" : "primary"}
+              color={localState.isFollowing ? "error" : "primary"}
               size="small"
               sx={{ borderRadius: "8px" }}
-              onClick={(e) => {
-                e.stopPropagation();
-                handleFollowToggle(post.author._id);
-              }}
+              onClick={(e) => handleOptimisticFollow(e, post.author._id)}
+              disabled={localState.isConnecting}
             >
-              {post.isFollowing ? "Unfollow" : "Follow"}
+              {localState.isFollowing ? "Unfollow" : "Follow"}
             </Button>
-            {!post.isConnected && (
+            {!localState.isConnected && (
               <Button
                 variant="contained"
                 color="secondary"
                 size="small"
                 sx={{ borderRadius: "8px" }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleConnectToggle(post.author._id);
-                }}
+                onClick={(e) => handleOptimisticConnect(e, post.author._id)}
+                disabled={localState.isConnecting}
+                startIcon={localState.isConnecting ? <CircularProgress size={14} /> : null}
               >
-                Connect
+                {localState.isConnecting ? "Connecting..." : "Connect"}
               </Button>
             )}
           </Stack>
@@ -100,6 +176,7 @@ const PostCard = ({
                 e.stopPropagation();
                 toggleExpand(post._id);
               }}
+              sx={{ color: 'primary.main' }}
             >
               {post.expanded ? "See Less" : "See More"}
             </Button>
@@ -117,6 +194,7 @@ const PostCard = ({
               overflow: "hidden",
               cursor: "pointer",
               mb: 2,
+              transition: 'height 0.3s ease'
             }}
             onClick={(e) => {
               e.stopPropagation();
@@ -130,7 +208,10 @@ const PostCard = ({
                 width: "100%",
                 height: "100%",
                 objectFit: "cover",
+                transition: 'transform 0.3s ease'
               }}
+              onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
+              onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
             />
             {post.imgUrls.length > 1 && (
               <Box
@@ -167,6 +248,7 @@ const PostCard = ({
                   minimap: { enabled: false },
                   scrollBeyondLastLine: false,
                 }}
+                loading={<CircularProgress />}
               />
             ) : (
               <Box
@@ -177,10 +259,14 @@ const PostCard = ({
                   alignItems: "center",
                   justifyContent: "center",
                   borderRadius: 1,
+                  cursor: 'pointer',
+                  '&:hover': {
+                    bgcolor: 'action.hover'
+                  }
                 }}
                 onMouseEnter={() => setEditorLoaded(true)}
               >
-                <Typography>Click to view code</Typography>
+                <Typography color="text.secondary">Click to view code</Typography>
               </Box>
             )}
           </Box>
@@ -191,18 +277,21 @@ const PostCard = ({
       <Box sx={{ display: "flex", gap: 1 }}>
         <Tooltip title="Like">
           <IconButton
-            onClick={(e) => {
-              e.stopPropagation();
-              handleLike(post._id);
+            onClick={(e) => handleOptimisticLike(e, post._id)}
+            sx={{
+              transition: 'transform 0.2s',
+              '&:hover': {
+                transform: 'scale(1.1)'
+              }
             }}
           >
-            {post.isLikedByUser ? (
+            {localState.isLiked ? (
               <Favorite sx={{ color: "red" }} />
             ) : (
               <FavoriteBorderOutlined />
             )}
             <Typography sx={{ ml: 0.5 }}>
-              {post.likes?.length || 0}
+              {localState.likeCount}
             </Typography>
           </IconButton>
         </Tooltip>
@@ -212,6 +301,12 @@ const PostCard = ({
             onClick={(e) => {
               e.stopPropagation();
               toggleCommentInput(post._id);
+            }}
+            sx={{
+              transition: 'transform 0.2s',
+              '&:hover': {
+                transform: 'scale(1.1)'
+              }
             }}
           >
             <CommentOutlined />

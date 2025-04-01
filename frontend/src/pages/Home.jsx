@@ -79,7 +79,7 @@ const Home = () => {
 
       {!loading && !error && (
       
-        <Box sx={{ display: 'flex', overflowX: 'auto', padding: '8px' }}>
+        <Box sx={{ display: 'flex', overflowX: 'auto', padding: '8px' , paddingBottom: '50px'}}>
           {repos.map((repo) => {
             const isDescriptionExpanded = expandedRepos[repo.id] || false;
             const description = repo.description || 'No description available';

@@ -551,7 +551,10 @@ const Profile = () => {
                   post={post}
                   loggedInUserId={loggedInUserId}
                   handleLike={handleLike}
-                  toggleCommentInput={toggleCommentInput}
+                  toggleCommentInput={(postId) => {
+                    setSelectedPost(posts.find(p => p._id === postId));
+                    setCommentsDrawerOpen(true);
+                  }}
                   toggleExpand={toggleExpand}
                   openModal={openModal}
                   theme={theme}
