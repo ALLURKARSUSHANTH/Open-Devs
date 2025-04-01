@@ -25,6 +25,8 @@ const NavBar = () => {
   const [showAllResults, setShowAllResults] = useState(false); // State to toggle showing all results
   const { theme, toggleTheme } = useTheme();
 
+  const API_URL = import.meta.env.VITE_API_URL;
+
   const fetchRepos = async (query) => {
     if (query === '') return;
     setLoading(true);
@@ -52,7 +54,7 @@ const NavBar = () => {
     setError(null);
 
     try {
-      const response = await fetch(`http://localhost:5000/users/search/${query}`);
+      const response = await fetch(`${API_URL}/users/search/${query}`);
       const data = await response.json();
       setUsers(data);
     } catch (err) {

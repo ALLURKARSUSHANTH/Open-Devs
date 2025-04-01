@@ -6,6 +6,8 @@ const Mentor = () => {
   const [menteeData, setMenteeData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loggedInUserId, setLoggedInUserId] = useState(null);
+  const API_URL = import.meta.env.VITE_API_URL;
+
 
   useEffect(() => {
     const auth = getAuth();
@@ -22,7 +24,7 @@ const Mentor = () => {
 
       try {
         setLoading(true);
-        const response = await fetch(`http://localhost:5000/mentor/mentees/${loggedInUserId}`);
+        const response = await fetch(`${API_URL}/mentees/${loggedInUserId}`);
         if (!response.ok) {
           throw new Error("Failed to fetch mentees");
         }

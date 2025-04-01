@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react'; //comments not being shown in mobile view
-import { useSelector } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import React, { useState, useEffect, useCallback } from "react"; //comments not being shown in mobile view
+import { useSelector } from "react-redux";
+import { Meta, useNavigate } from "react-router-dom";
+import axios from "axios";
 import {
   Typography,
   Avatar,
@@ -16,25 +16,26 @@ import {
   Modal,
   IconButton,
   Stack,
-} from '@mui/material';
-import { logout } from '../firebase/auth';
+} from "@mui/material";
+import { logout } from "../firebase/auth";
 import {
   People as ConnectionsIcon,
   Favorite as FollowersIcon,
   PhotoLibrary as PostsIcon,
   Close as CloseIcon,
-} from '@mui/icons-material';
-import { Swiper, SwiperSlide } from 'swiper/react';
-import { Navigation, Pagination } from 'swiper/modules';
-import 'swiper/css';
-import 'swiper/css/navigation';
-import 'swiper/css/pagination';
-import FollowersList from '../components/FollowersList';
-import ConnectionsList from '../components/ConnectionsList';
-import PostCard from '../components/PostsCard';
-import CommentsSection from '../components/Comments';
-import { fetchComments} from '../services/posts';
-import usePostActions from '../components/postActions';
+  ImportantDevices,
+} from "@mui/icons-material";
+import { Swiper, SwiperSlide } from "swiper/react";
+import { Navigation, Pagination } from "swiper/modules";
+import "swiper/css";
+import "swiper/css/navigation";
+import "swiper/css/pagination";
+import FollowersList from "../components/FollowersList";
+import ConnectionsList from "../components/ConnectionsList";
+import PostCard from "../components/PostsCard";
+import CommentsSection from "../components/Comments";
+import { fetchComments } from "../services/posts";
+import usePostActions from "../components/postActions";
 
 const Profile = () => {
   const isMobile = useMediaQuery((theme) => theme.breakpoints.down("sm"));
@@ -42,7 +43,7 @@ const Profile = () => {
     theme,
     loading,
     error,
-    loggedInUserId,  
+    loggedInUserId,
     selectedImages,
     isModalOpen,
     replyInputVisible,
@@ -65,8 +66,8 @@ const Profile = () => {
     handleCommentSubmit,
     toggleReplyInput,
     handleReplySubmit,
-    toggleViewReplies
-  } = usePostActions(isMobile); 
+    toggleViewReplies,
+  } = usePostActions(isMobile);
 
   const navigate = useNavigate();
   const profile = useSelector((state) => state.auth.profile);
@@ -75,14 +76,15 @@ const Profile = () => {
     posts: 0,
     connections: 0,
   });
+  const API_URL = import.meta.env.VITE_API_URL;
 
   // State for editable fields
   const [isEditing, setIsEditing] = useState(false);
   const [profileData, setProfileData] = useState({
-    displayName: profile?.displayName || 'User',
-    email: profile?.email || 'No email available',
-    mobileNumber: profile?.mobileNumber || '',
-    photoURL: profile?.photoURL || '',
+    displayName: profile?.displayName || "User",
+    email: profile?.email || "No email available",
+    mobileNumber: profile?.mobileNumber || "",
+    photoURL: profile?.photoURL || "",
   });
 
   const [followers, setFollowers] = useState([]);
@@ -101,9 +103,9 @@ const Profile = () => {
       if (!loggedInUserId) return;
       try {
         const [followersRes, postsRes, connectionsRes] = await Promise.all([
-          axios.get(`http://localhost:5000/follow/${loggedInUserId}/followers-count`),
-          axios.get(`http://localhost:5000/posts/getProfile/${loggedInUserId}`),
-          axios.get(`http://localhost:5000/connections/connected/${loggedInUserId}`),
+          axios.get(`${API_URL}/follow/${loggedInUserId}/followers-count`),
+          axios.get(`${API_URL}/posts/getProfile/${loggedInUserId}`),
+          axios.get(`${API_URL}/connections/connected/${loggedInUserId}`),
         ]);
 
         setFollowers(followersRes.data.followers || []);
@@ -123,46 +125,50 @@ const Profile = () => {
           comments[post._id] = postComments;
         }
         setPostComments(comments);
-
       } catch (err) {
-        console.error('Error fetching counts:', err);
-        setError(err.response?.data?.message || 'An error occurred while fetching data.');
-      } 
+        console.error("Error fetching counts:", err);
+        setError(
+          err.response?.data?.message ||
+            "An error occurred while fetching data.",
+        );
+      }
     };
-    
+
     fetchCounts();
   }, [loggedInUserId]);
-
 
   const handleLogout = async () => {
     try {
       await logout();
-      navigate('/signin');
+      navigate("/signin");
     } catch (error) {
-      console.error('Logout failed', error);
+      console.error("Logout failed", error);
     }
   };
 
   const handleRemoveFollower = useCallback((followerId) => {
     setFollowers((prevFollowers) =>
-      prevFollowers.filter((follower) => follower._id !== followerId)
+      prevFollowers.filter((follower) => follower._id !== followerId),
     );
-    setCounts((prevCounts) => ({ ...prevCounts, followers: prevCounts.followers - 1 }));
+    setCounts((prevCounts) => ({
+      ...prevCounts,
+      followers: prevCounts.followers - 1,
+    }));
   }, []);
 
   const handleRemoveConnection = useCallback((connectionId) => {
     setConnections((prevConnections) =>
-      prevConnections.filter((connection) => connection._id !== connectionId)
+      prevConnections.filter((connection) => connection._id !== connectionId),
     );
   }, []);
 
   const handleSave = async () => {
     try {
-      await axios.put(`http://localhost:5000/profile/${loggedInUserId}`, profileData);
+      await axios.put(`${API_URL}/${loggedInUserId}`, profileData);
       setIsEditing(false);
     } catch (error) {
-      console.error('Error updating profile:', error);
-      setError('Failed to update profile.');
+      console.error("Error updating profile:", error);
+      setError("Failed to update profile.");
     }
   };
 
@@ -175,12 +181,12 @@ const Profile = () => {
         setProfileData((prev) => ({ ...prev, photoURL: newPhotoURL }));
 
         try {
-          await axios.put(`http://localhost:5000/profile/${loggedInUserId}/photo`, {
+          await axios.put(`${API_URL}/profile/${loggedInUserId}/photo`, {
             photoURL: newPhotoURL,
           });
         } catch (error) {
-          console.error('Error updating photo:', error);
-          setError('Failed to update photo.');
+          console.error("Error updating photo:", error);
+          setError("Failed to update photo.");
         }
       };
       reader.readAsDataURL(file);
@@ -209,55 +215,72 @@ const Profile = () => {
 
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+      <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
         <CircularProgress />
       </Box>
     );
   }
 
   if (error) {
-    return (
-      <Box sx={{ color: 'error.main', p: 2 }}>
-        Error: {error}
-      </Box>
-    );
+    return <Box sx={{ color: "error.main", p: 2 }}>Error: {error}</Box>;
   }
 
   return (
-    <Box sx={{ width: '100%', padding: 0 }}>
-      <Grid container justifyContent="center" alignItems="center" spacing={2} sx={{ padding: 0 }}>
+    <Box sx={{ width: "100%", padding: 0 }}>
+      <Grid
+        container
+        justifyContent="center"
+        alignItems="center"
+        spacing={2}
+        sx={{ padding: 0 }}
+      >
         <Grid item xs={12} sm={8} md={6}>
           <Card sx={{ borderRadius: 4, boxShadow: 6 }}>
             <div
               style={{
-                height: '150px',
-                background: 'linear-gradient(135deg, #6a11cb, #2575fc)',
-                borderTopLeftRadius: '16px',
-                borderTopRightRadius: '16px',
+                height: "150px",
+                background: "linear-gradient(135deg, #6a11cb, #2575fc)",
+                borderTopLeftRadius: "16px",
+                borderTopRightRadius: "16px",
               }}
             />
 
             <CardContent>
-              <Grid container direction="column" alignItems="center" spacing={2}>
+              <Grid
+                container
+                direction="column"
+                alignItems="center"
+                spacing={2}
+              >
                 <Avatar
                   src={profileData.photoURL}
                   alt={profileData.displayName}
                   sx={{
                     width: 120,
                     height: 120,
-                    marginTop: '-60px',
-                    border: '4px solid white',
+                    marginTop: "-60px",
+                    border: "4px solid white",
                     boxShadow: 3,
                   }}
                 />
 
                 {isEditing ? (
-                  <Grid container direction="column" spacing={2} sx={{ width: '100%', marginTop: 2, paddingLeft: 2 }}>
+                  <Grid
+                    container
+                    direction="column"
+                    spacing={2}
+                    sx={{ width: "100%", marginTop: 2, paddingLeft: 2 }}
+                  >
                     <Grid item>
                       <TextField
                         label="Full Name"
                         value={profileData.displayName}
-                        onChange={(e) => setProfileData((prev) => ({ ...prev, displayName: e.target.value }))}
+                        onChange={(e) =>
+                          setProfileData((prev) => ({
+                            ...prev,
+                            displayName: e.target.value,
+                          }))
+                        }
                         fullWidth
                         margin="normal"
                       />
@@ -266,14 +289,19 @@ const Profile = () => {
                       <TextField
                         label="Email"
                         value={profileData.email}
-                        onChange={(e) => setProfileData((prev) => ({ ...prev, email: e.target.value }))}
+                        onChange={(e) =>
+                          setProfileData((prev) => ({
+                            ...prev,
+                            email: e.target.value,
+                          }))
+                        }
                         fullWidth
                         margin="normal"
                         disabled
                         sx={{
-                          '& .MuiInputBase-input.Mui-disabled': {
-                            color: '#000000',
-                            WebkitTextFillColor: '#000000',
+                          "& .MuiInputBase-input.Mui-disabled": {
+                            color: "#000000",
+                            WebkitTextFillColor: "#000000",
                           },
                         }}
                       />
@@ -282,26 +310,49 @@ const Profile = () => {
                       <TextField
                         label="Mobile Number"
                         value={profileData.mobileNumber}
-                        onChange={(e) => setProfileData((prev) => ({ ...prev, mobileNumber: e.target.value }))}
+                        onChange={(e) =>
+                          setProfileData((prev) => ({
+                            ...prev,
+                            mobileNumber: e.target.value,
+                          }))
+                        }
                         fullWidth
                         margin="normal"
                       />
                     </Grid>
                     <Grid item>
-                      <Card sx={{ borderRadius: 4, boxShadow: 6, background: 'lightgray' }}>
+                      <Card
+                        sx={{
+                          borderRadius: 4,
+                          boxShadow: 6,
+                          background: "lightgray",
+                        }}
+                      >
                         <CardContent>
-                          <Grid container alignItems="center" spacing={2} justifyContent="space-between">
+                          <Grid
+                            container
+                            alignItems="center"
+                            spacing={2}
+                            justifyContent="space-between"
+                          >
                             <Grid item>
                               <Grid container alignItems="center" spacing={2}>
                                 <Grid item>
                                   <Avatar
                                     src={profileData.photoURL}
                                     alt={profileData.displayName}
-                                    sx={{ width: 60, height: 60, border: '2px solid black' }}
+                                    sx={{
+                                      width: 60,
+                                      height: 60,
+                                      border: "2px solid black",
+                                    }}
                                   />
                                 </Grid>
                                 <Grid item>
-                                  <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                                  <Typography
+                                    variant="h6"
+                                    sx={{ fontWeight: "bold" }}
+                                  >
                                     {profileData.displayName}
                                   </Typography>
                                 </Grid>
@@ -310,7 +361,7 @@ const Profile = () => {
                             <Grid item>
                               <input
                                 accept="image/*"
-                                style={{ display: 'none' }}
+                                style={{ display: "none" }}
                                 id="avatar-upload"
                                 type="file"
                                 onChange={handlePhotoUpload}
@@ -320,12 +371,12 @@ const Profile = () => {
                                   variant="contained"
                                   component="span"
                                   sx={{
-                                    backgroundColor: '#007bff',
-                                    color: 'white',
-                                    textTransform: 'none',
-                                    borderRadius: '20px',
-                                    padding: '4px 12px',
-                                    fontSize: '12px',
+                                    backgroundColor: "#007bff",
+                                    color: "white",
+                                    textTransform: "none",
+                                    borderRadius: "20px",
+                                    padding: "4px 12px",
+                                    fontSize: "12px",
                                   }}
                                 >
                                   Change photo
@@ -339,35 +390,50 @@ const Profile = () => {
                   </Grid>
                 ) : (
                   <>
-                    <Typography variant="h4" component="div" sx={{ marginTop: 2, fontWeight: 'bold' }}>
+                    <Typography
+                      variant="h4"
+                      component="div"
+                      sx={{ marginTop: 2, fontWeight: "bold" }}
+                    >
                       {profileData.displayName}
                     </Typography>
                     <Typography variant="body1" color="text.secondary">
                       {profileData.email}
                     </Typography>
                     <Typography variant="body1" color="text.secondary">
-                      {profileData.mobileNumber || 'No mobile number available'}
+                      {profileData.mobileNumber || "No mobile number available"}
                     </Typography>
                   </>
                 )}
 
-                <Grid container justifyContent="space-around" sx={{ marginTop: 3 }}>
+                <Grid
+                  container
+                  justifyContent="space-around"
+                  sx={{ marginTop: 3 }}
+                >
                   <Grid item>
                     <Typography
                       variant="h6"
                       align="center"
                       onClick={handleOpenConnectionsModal}
-                      sx={{ cursor: 'pointer' }}
+                      sx={{ cursor: "pointer" }}
                     >
                       {connections.length}
                     </Typography>
                     <Typography
                       variant="body2"
                       color="text.secondary"
-                      sx={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        cursor: "pointer",
+                      }}
                       onClick={handleOpenConnectionsModal}
                     >
-                      <ConnectionsIcon sx={{ marginRight: 1, color: '#6a11cb' }} /> Connections
+                      <ConnectionsIcon
+                        sx={{ marginRight: 1, color: "#6a11cb" }}
+                      />{" "}
+                      Connections
                     </Typography>
                   </Grid>
                   <Grid item>
@@ -375,32 +441,37 @@ const Profile = () => {
                       variant="h6"
                       align="center"
                       onClick={handleOpenFollowersModal}
-                      sx={{ cursor: 'pointer' }}
+                      sx={{ cursor: "pointer" }}
                     >
                       {followers.length}
                     </Typography>
                     <Typography
                       variant="body2"
                       color="text.secondary"
-                      sx={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        cursor: "pointer",
+                      }}
                       onClick={handleOpenFollowersModal}
                     >
-                      <FollowersIcon sx={{ marginRight: 1, color: '#ff4081' }} /> Followers
+                      <FollowersIcon
+                        sx={{ marginRight: 1, color: "#ff4081" }}
+                      />{" "}
+                      Followers
                     </Typography>
                   </Grid>
                   <Grid item>
-                    <Typography
-                      variant="h6"
-                      align="center"
-                    >
+                    <Typography variant="h6" align="center">
                       {posts.length}
                     </Typography>
                     <Typography
                       variant="body2"
                       color="text.secondary"
-                      sx={{ display: 'flex', alignItems: 'center' }}
+                      sx={{ display: "flex", alignItems: "center" }}
                     >
-                      <PostsIcon sx={{ marginRight: 1, color: '#4caf50' }} /> Posts
+                      <PostsIcon sx={{ marginRight: 1, color: "#4caf50" }} />{" "}
+                      Posts
                     </Typography>
                   </Grid>
                 </Grid>
@@ -420,20 +491,40 @@ const Profile = () => {
                   loggedInUserId={loggedInUserId}
                 />
 
-                <Grid container justifyContent="center" spacing={2} sx={{ marginTop: 3 }}>
+                <Grid
+                  container
+                  justifyContent="center"
+                  spacing={2}
+                  sx={{ marginTop: 3 }}
+                >
                   <Grid item>
                     {isEditing ? (
-                      <Button onClick={handleSave} color="primary" variant="contained" sx={{ borderRadius: 20 }}>
+                      <Button
+                        onClick={handleSave}
+                        color="primary"
+                        variant="contained"
+                        sx={{ borderRadius: 20 }}
+                      >
                         Save
                       </Button>
                     ) : (
-                      <Button onClick={() => setIsEditing(true)} color="primary" variant="outlined" sx={{ borderRadius: 20 }}>
+                      <Button
+                        onClick={() => setIsEditing(true)}
+                        color="primary"
+                        variant="outlined"
+                        sx={{ borderRadius: 20 }}
+                      >
                         Edit Profile
                       </Button>
                     )}
                   </Grid>
                   <Grid item>
-                    <Button onClick={handleLogout} color="secondary" variant="contained" sx={{ borderRadius: 20 }}>
+                    <Button
+                      onClick={handleLogout}
+                      color="secondary"
+                      variant="contained"
+                      sx={{ borderRadius: 20 }}
+                    >
                       LogOut
                     </Button>
                   </Grid>
@@ -445,54 +536,52 @@ const Profile = () => {
       </Grid>
 
       {/* Posts section */}
-      <Box sx={{ p: 2,
-        paddingBottom:"95px"
-       }}>
+      <Box sx={{ p: 2, paddingBottom: "95px" }}>
         {posts.length === 0 ? (
-          <Box sx={{ p: 2, textAlign: 'center' }}>
+          <Box sx={{ p: 2, textAlign: "center" }}>
             <Typography>No posts available</Typography>
           </Box>
-        ) : isMobile ?  (
+        ) : isMobile ? (
           // Mobile view - single column with comments drawer
           <>
             <Stack spacing={3}>
-            {posts.map((post) => (
+              {posts.map((post) => (
                 <PostCard
-                key={post._id}
-                post={post}
-                loggedInUserId={loggedInUserId}
-                handleLike={handleLike}
-                toggleCommentInput={toggleCommentInput}
-                toggleExpand={toggleExpand}
-                openModal={openModal}
-                theme={theme}
+                  key={post._id}
+                  post={post}
+                  loggedInUserId={loggedInUserId}
+                  handleLike={handleLike}
+                  toggleCommentInput={toggleCommentInput}
+                  toggleExpand={toggleExpand}
+                  openModal={openModal}
+                  theme={theme}
+                />
+              ))}
+            </Stack>
+
+            <CommentsSection
+              comments={postComments[selectedPost?._id] || []}
+              commentText={commentText}
+              setCommentText={setCommentText}
+              handleCommentSubmit={handleCommentSubmit}
+              replyText={replyText}
+              setReplyText={setReplyText}
+              replyInputVisible={replyInputVisible}
+              toggleReplyInput={toggleReplyInput}
+              handleReplySubmit={handleReplySubmit}
+              viewReplies={viewReplies}
+              toggleViewReplies={toggleViewReplies}
+              postId={selectedPost?._id}
+              mobileOpen={commentsDrawerOpen}
+              handleMobileClose={() => setCommentsDrawerOpen(false)}
             />
-            ))}
-          </Stack>
-          
-          <CommentsSection
-            comments={postComments[selectedPost?._id] || []}
-            commentText={commentText}
-            setCommentText={setCommentText}
-            handleCommentSubmit={handleCommentSubmit}
-            replyText={replyText}
-            setReplyText={setReplyText}
-            replyInputVisible={replyInputVisible}
-            toggleReplyInput={toggleReplyInput}
-            handleReplySubmit={handleReplySubmit}
-            viewReplies={viewReplies}
-            toggleViewReplies={toggleViewReplies}
-            postId={selectedPost?._id}
-            mobileOpen={commentsDrawerOpen}
-            handleMobileClose={() => setCommentsDrawerOpen(false)}
-          />
           </>
         ) : selectedPost ? (
           // Desktop expanded view with comments on right and posts below
           <Box>
-            <Box sx={{ display: 'flex', mb: 4 }}>
+            <Box sx={{ display: "flex", mb: 4 }}>
               <Box sx={{ flex: 2 }}>
-                <PostCard 
+                <PostCard
                   post={selectedPost}
                   loggedInUserId={loggedInUserId}
                   onClick={() => setSelectedPost(null)}
@@ -503,13 +592,15 @@ const Profile = () => {
                   isExpanded
                 />
               </Box>
-              
+
               <Box sx={{ flex: 1 }}>
                 <CommentsSection
                   comments={postComments[selectedPost._id] || []}
                   commentText={commentText}
                   setCommentText={setCommentText}
-                  handleCommentSubmit={() => handleCommentSubmit(selectedPost._id)}
+                  handleCommentSubmit={() =>
+                    handleCommentSubmit(selectedPost._id)
+                  }
                   replyText={replyText}
                   setReplyText={setReplyText}
                   replyInputVisible={replyInputVisible}
@@ -528,10 +619,10 @@ const Profile = () => {
               </Typography>
               <Grid container spacing={2}>
                 {posts
-                  .filter(p => p._id !== selectedPost._id)
-                  .map(post => (
+                  .filter((p) => p._id !== selectedPost._id)
+                  .map((post) => (
                     <Grid item xs={12} sm={6} md={4} key={post._id}>
-                      <PostCard 
+                      <PostCard
                         post={post}
                         handleLike={handleLike}
                         onClick={() => setSelectedPost(post)}
@@ -566,20 +657,20 @@ const Profile = () => {
       <Modal open={isModalOpen} onClose={closeModal}>
         <Box
           sx={{
-            position: 'fixed',
+            position: "fixed",
             top: 0,
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundColor: 'rgba(0,0,0,0.8)',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
+            backgroundColor: "rgba(0,0,0,0.8)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
           }}
         >
           <IconButton
             onClick={closeModal}
-            sx={{ position: 'absolute', top: 16, right: 16, color: 'white' }}
+            sx={{ position: "absolute", top: 16, right: 16, color: "white" }}
           >
             <CloseIcon />
           </IconButton>
@@ -587,7 +678,7 @@ const Profile = () => {
             modules={[Navigation, Pagination]}
             navigation
             pagination={{ clickable: true }}
-            style={{ width: '80%', height: '80%' }}
+            style={{ width: "80%", height: "80%" }}
           >
             {selectedImages.map((img, index) => (
               <SwiperSlide key={index}>
@@ -595,9 +686,9 @@ const Profile = () => {
                   src={img}
                   alt={`Slide ${index}`}
                   style={{
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'contain',
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "contain",
                   }}
                 />
               </SwiperSlide>

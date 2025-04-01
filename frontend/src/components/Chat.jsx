@@ -64,6 +64,7 @@ const Chat = () => {
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [unreadCount, setUnreadCount] = useState({});
   const messageRef = useRef(null);
+  const API_URL = import.meta.env.VITE_API_URL;
 
   
   const theme = useTheme();
@@ -97,7 +98,7 @@ const Chat = () => {
       setLoadingConnections(true);
       const fetchConnections = async () => {
         try {
-          const response = await axios.get(`http://localhost:5000/connections/connected/${userId}`);
+          const response = await axios.get(`${API_URL}/connections/connected/${userId}`);
           setConnections(response.data.connections);
           const initialUnreadMessages = {};
           response.data.connections.forEach((connection) => {
@@ -121,7 +122,7 @@ const Chat = () => {
       setLoadingMessages(true);
       const fetchMessages = async () => {
         try {
-          const response = await axios.get(`http://localhost:5000/messages/${userId}/${selectedConnection}`);
+          const response = await axios.get(`${API_URL}/messages/${userId}/${selectedConnection}`);
           setMessages(response.data);
           setUnreadCount((prevUnreadCount) => ({
             ...prevUnreadCount,

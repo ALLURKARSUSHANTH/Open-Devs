@@ -22,6 +22,8 @@ import { useSnackbar } from 'notistack';
 import axios from 'axios';
 
 const FollowersList = memo(({ followers, open, onClose, loggedInUserId, onRemoveFollower }) => {
+    const API_URL = import.meta.env.VITE_API_URL;
+
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [selectedFollowerId, setSelectedFollowerId] = useState(null);
     const [removing, setRemoving] = useState(false);
@@ -42,7 +44,7 @@ const FollowersList = memo(({ followers, open, onClose, loggedInUserId, onRemove
         setRemoving(true);
         try {
           const response = await axios.delete(
-            `http://localhost:5000/follow/remove-follower/${selectedFollowerId}`,
+            `${API_URL}/remove-follower/${selectedFollowerId}`,
             {
               data: { userId: loggedInUserId },
             }

@@ -2,11 +2,12 @@ import { auth, githubProvider, googleProvider } from './firebaseConfig';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signInWithPopup, signOut } from 'firebase/auth';
 import axios from 'axios';
 
+  const API_URL = import.meta.env.VITE_API_URL;
 // Helper function to send user data to the backend
 const saveUserToBackend = async (user) => {
 
   try {
-    await axios.post("http://localhost:5000/users/firebase", {
+    await axios.post(`${API_URL}/users/firebase`, {
       _id: user?.uid,
       email: user?.email,
       displayName: user?.displayName || "", 

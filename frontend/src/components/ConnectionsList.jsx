@@ -22,6 +22,7 @@ import { useSnackbar } from 'notistack';
 import axios from 'axios';
 
 const ConnectionsList = ({ connections, open, onClose, onRemoveConnection, loggedInUserId }) => {
+    const API_URL = import.meta.env.VITE_API_URL;
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [selectedConnectionId, setSelectedConnectionId] = useState(null);
     const [removing, setRemoving] = useState(false);
@@ -43,7 +44,7 @@ const ConnectionsList = ({ connections, open, onClose, onRemoveConnection, logge
         setRemoving(true);
         try {
             const response = await axios.delete(
-                `http://localhost:5000/connections/remove-connection/${selectedConnectionId}`,
+                `${API_URL}/connections/remove-connection/${selectedConnectionId}`,
                 {
                     data: { userId: loggedInUserId },
                 }
