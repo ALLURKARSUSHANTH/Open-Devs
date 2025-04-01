@@ -13,6 +13,7 @@ import Post from '../components/Post';
 import axios from 'axios';
 import Mentoring from '../pages/Mentoring';
 import Chat from '../components/Chat';
+import VideoStream from './VideoStream';
 
 function AppRoutes() {
   const [user, setUser] = useState(null);
@@ -70,6 +71,10 @@ function AppRoutes() {
           path="/mentoring"
           element={user ? <Mentoring/> : <Navigate to="/signin" />}
         />
+        <Route
+  path="/stream"
+  element={user ? <VideoStream userId={user.uid} /> : <Navigate to="/signin" />}
+/>
 
         <Route
           path="/chat"

@@ -12,6 +12,7 @@ const initializeSocket = (server) => {
   });
 
   const activeUsers = new Set();
+  const activeStreams = new Map(); // Track active video streams
 
   io.on('connection', (socket) => {
     console.log('a user connected:', socket.id);
@@ -21,6 +22,115 @@ const initializeSocket = (server) => {
       socket.join(userId);
       activeUsers.add(userId);
       io.emit('activeUsers', Array.from(activeUsers)); // Emit active users list
+    });
+
+
+    socket.on('startStream', async ({ userId }) => {
+      const streamId = `stream-${userId}-${Date.now()}`;
+      activeStreams.set(userId, { 
+        socketId: socket.id, 
+        streamId,
+        viewers: new Set() 
+      });
+      
+      socket.userId = userId;
+      
+      io.emit('streamStarted', { userId, streamId });
+      console.log(`Stream started by ${userId}`);
+    });
+
+    socket.on('stopStream', (userId) => {
+      if (activeStreams.has(userId)) {
+        const streamInfo = activeStreams.get(userId);
+        // Notify all viewers that the stream ended
+        streamInfo.viewers.forEach(viewerId => {
+          io.to(viewerId).emit('streamEnded', userId);
+        });
+        activeStreams.delete(userId);
+        io.emit('streamEnded', userId);
+        console.log(`Stream stopped by ${userId}`);
+      }
+    });
+
+    socket.on('joinStream', ({ userId, streamerId }) => {
+      const streamInfo = activeStreams.get(streamerId);
+      if (streamInfo) {
+        // Add viewer to the stream's viewer list
+        streamInfo.viewers.add(userId);
+        
+        // Notify the streamer about the new viewer
+        io.to(streamInfo.socketId).emit('viewerJoined', userId);
+        
+        // Send viewer count update
+        io.emit('viewerCount', { 
+          streamerId,
+          count: streamInfo.viewers.size 
+        });
+        
+        console.log(`${userId} joined stream of ${streamerId}`);
+      }
+    });
+
+    socket.on('leaveStream', ({ userId, streamerId }) => {
+      const streamInfo = activeStreams.get(streamerId);
+      if (streamInfo && streamInfo.viewers.has(userId)) {
+        streamInfo.viewers.delete(userId);
+        
+        // Notify the streamer about the viewer leaving
+        io.to(streamInfo.socketId).emit('viewerLeft', userId);
+        
+        // Send viewer count update
+        io.emit('viewerCount', { 
+          streamerId,
+          count: streamInfo.viewers.size 
+        });
+        
+        console.log(`${userId} left stream of ${streamerId}`);
+      }
+    });
+
+    // WebRTC signaling
+    socket.on('offer', (data) => {
+      console.log(`Forwarding offer from ${data.sender} to ${data.target}`);
+      io.to(data.target).emit('offer', {
+        offer: data.offer,
+        sender: data.sender
+      });
+    });
+
+    socket.on('answer', (data) => {
+      console.log(`Forwarding answer from ${data.sender} to ${data.target}`);
+      io.to(data.target).emit('answer', {
+        answer: data.answer,
+        sender: data.sender
+      });
+    });
+
+    // Socket.io server
+      socket.on('ice-candidate', (data) => {
+        io.to(data.target).emit('ice-candidate', {
+          candidate: data.candidate,
+          sender: data.sender
+        });
+      });
+
+    // Get active streams
+    socket.on('getActiveStreams', () => {
+      const streams = Array.from(activeStreams.entries()).map(([userId, info]) => ({
+        userId,
+        streamId: info.streamId
+      }));
+      socket.emit('activeStreams', streams);
+    });
+
+    // Add this with your other socket handlers
+    socket.on('getViewerCount', ({ streamerId }, callback) => {
+      const streamInfo = activeStreams.get(streamerId);
+      if (streamInfo) {
+        callback({ count: streamInfo.viewers.size });
+      } else {
+        callback({ count: 0 });
+      }
     });
 
     // Handle private messages
@@ -189,8 +299,37 @@ const initializeSocket = (server) => {
     // Remove user from active users on disconnect
     socket.on('disconnect', () => {
       console.log('user disconnected:', socket.id);
-      activeUsers.delete(socket.userId);
-      io.emit('activeUsers', Array.from(activeUsers)); // Emit updated active users list
+      
+      // Handle streamer disconnection
+      for (const [userId, info] of activeStreams.entries()) {
+        if (info.socketId === socket.id) {
+          // Notify all viewers that the stream ended
+          info.viewers.forEach(viewerId => {
+            io.to(viewerId).emit('streamEnded', userId);
+          });
+          activeStreams.delete(userId);
+          io.emit('streamEnded', userId);
+          console.log(`Stream ended due to disconnection: ${userId}`);
+        }
+      }
+      
+      // Handle viewer disconnection
+      for (const [_, info] of activeStreams.entries()) {
+        if (info.viewers.has(socket.userId)) {
+          info.viewers.delete(socket.userId);
+          io.to(info.socketId).emit('viewerLeft', socket.userId);
+          io.emit('viewerCount', { 
+            streamerId: userId,
+            count: info.viewers.size 
+          });
+        }
+      }
+      
+      // Remove from active users
+      if (socket.userId) {
+        activeUsers.delete(socket.userId);
+        io.emit('activeUsers', Array.from(activeUsers));
+      }
     });
   });
 
