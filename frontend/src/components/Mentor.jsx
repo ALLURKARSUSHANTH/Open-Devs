@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
 import { Typography, Card, CardContent, CardHeader, Avatar, Box, Grid, CircularProgress } from '@mui/material';
+import { useNavigate } from 'react-router-dom';
+import socket from '../context/socket';
 
 const Mentor = () => {
   const [menteeData, setMenteeData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loggedInUserId, setLoggedInUserId] = useState(null);
   const API_URL = import.meta.env.VITE_API_URL;
+  const navigate = useNavigate();
 
 
   useEffect(() => {
@@ -24,7 +27,7 @@ const Mentor = () => {
 
       try {
         setLoading(true);
-        const response = await fetch(`${API_URL}/mentees/${loggedInUserId}`);
+        const response = await fetch(`${API_URL}/mentor/mentees/${loggedInUserId}`);
         if (!response.ok) {
           throw new Error("Failed to fetch mentees");
         }
@@ -57,6 +60,14 @@ const Mentor = () => {
               <Grid item xs={12} sm={6} md={4} key={mentee._id}>
                 <Card sx={{ height: '100%' }}>
                   <CardHeader
+                   onClick={(e) => {
+                    const uid =mentee._id;
+                    if (uid) {
+                      // Navigate to author's profile
+                      console.log(`Navigate to profile of ${uid}`);
+                      navigate(`/profile/${uid}`);
+                    }
+                  }}
                     avatar={
                       <Avatar 
                         src={mentee.photoURL || ""} 

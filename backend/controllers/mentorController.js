@@ -110,6 +110,18 @@ exports.acceptMentee = async (req, res) => {
     }
     mentor.menteeRequests = mentor.menteeRequests.filter((id) => id !== menteeId);
     mentor.mentees.push(menteeId);
+    const student = await User.findById(menteeId);
+    if (!student) {
+      return res.status(400).json({ error: "Student not found" });
+    }
+    const mentorUser = await User.findById(mentorId);
+    if (!mentorUser) {
+      return res.status(400).json({ error: "Mentor user not found" });
+    }
+
+    await mentorUser.connections.push(menteeId);
+    await student.connections.push(mentorId);
+    await student.save();
     await mentor.save();
     await Notification.updateMany(
       { userId: menteeId, senderId: mentorId }, // matching menteeId as user and mentorId as sender
@@ -179,7 +191,7 @@ exports.getMentorDetails = async (req, res) => {
     const { mentorId } = req.params;
 
     // Find the mentor by ID
-    const mentor = await Mentor.findById(mentorId).populate('reviews.menteeId', 'displayName'); // Populate menteeId with their displayName
+    const mentor = await Mentor.findById(mentorId).populate('_id','reviews.menteeId', 'displayName'); // Populate menteeId with their displayName
 
     if (!mentor) {
       return res.status(404).json({ error: 'Mentor not found' });

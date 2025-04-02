@@ -3,10 +3,15 @@ import { Grid, Button, ListItem, ListItemText, Avatar, Typography } from '@mui/m
 import { Link } from 'react-router-dom';
 import { Box } from '@mui/system';
 
-const SearchResults = ({ users, repos, showAll, onShowAllClick }) => {
+const SearchResults = ({ users, repos, showAll, onShowAllClick, onResultClick}) => {
   const renderUserResults = () => {
     return users.slice(0, showAll ? users.length : 5).map((user) => (
-      <ListItem button key={user._id} component={Link} to={`/profile/${user._id}`}>
+      <ListItem button 
+      key={user._id} 
+      component={Link}
+      to={`/profile/${user._id}`}
+      onClick={onResultClick}
+>
         <Avatar src={user.photoURL} alt={user.displayName} sx={{ marginRight: 2, width: 40, height: 40 }} />
         <ListItemText primary={user.displayName} secondary={user.email} />
       </ListItem>
@@ -15,7 +20,13 @@ const SearchResults = ({ users, repos, showAll, onShowAllClick }) => {
 
   const renderRepoResults = () => {
     return repos.slice(0, showAll ? repos.length : 5).map((repo) => (
-      <ListItem button key={repo.id} component={Link} to={repo.html_url} target="_blank">
+      <ListItem button 
+      key={repo.id} 
+      component={Link} 
+      to={repo.html_url} 
+      target="_blank" 
+      onClick={onResultClick} 
+      >
         <Avatar src={repo.owner.avatar_url} alt={repo.owner.login} sx={{ marginRight: 2, width: 40, height: 40 }} />
         <ListItemText primary={repo.name} secondary={repo.owner.login} />
       </ListItem>

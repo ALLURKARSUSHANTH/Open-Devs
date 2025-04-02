@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Grid, Card, CardContent, CardHeader, Avatar, Typography, Button, Collapse, Rating , TextField} from '@mui/material';
+import { Grid, Card, CardContent, CardHeader, Avatar, Typography, Button, Collapse, Rating , TextField,Box} from '@mui/material';
 import axios from 'axios';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
+import { useNavigate } from 'react-router-dom';
+import socket from '../context/socket';
 
 const Mentee = () => {
   const [mentors, setMentors] = useState([]);
@@ -13,6 +15,7 @@ const Mentee = () => {
   const [feedback, setFeedback] = useState(''); // Store feedback message
   const [selectedMentor, setSelectedMentor] = useState(null); // Mentor currently being rated
   const API_URL = import.meta.env.VITE_API_URL;
+  const navigate = useNavigate();
 
 
   useEffect(() => {
@@ -66,6 +69,7 @@ const Mentee = () => {
         menteeId: loggedInUserId,
       });
       alert('Mentorship request sent!');
+      socket.emit('mentorship-request', { mentorId, menteeId: loggedInUserId });
     } catch (err) {
       alert('Error requesting mentorship');
     }
@@ -114,22 +118,36 @@ const Mentee = () => {
 
 
   return (
+    
     <Grid container spacing={3} justifyContent="center" sx={{ padding: 3 }}>
+      <Box>
+      <Button
+      >Become a mentor</Button>
+    </Box>
       {loading && <Typography variant="h6">Loading...</Typography>}
       {error && <Typography variant="h6" color="error">{error}</Typography>}
 
       {!loading && !error && mentors.length === 0 && (
         <Typography variant="h6">No mentors available at the moment.</Typography>
       )}
-
       {!loading && !error && mentors.map((mentor) => (
         <Grid item xs={12} sm={6} md={4} key={mentor._id}>
+          
           <Card sx={{ display: 'flex', flexDirection: 'column', borderRadius: 2, boxShadow: 6 }}>
             <CardHeader
               avatar={<Avatar src={mentor._id?.photoURL || ''} />}
               title={mentor._id?.displayName || 'Unknown Mentor'}
               subheader={mentor._id?.email || 'No email provided'}
               sx={{ paddingBottom: 0 }}
+              onClick={(e) => {
+                e.stopPropagation();
+                const uid = mentor._id?._id; // Assuming uid is stored in mentor._id
+                if (uid) {
+                  // Navigate to author's profile
+                  console.log(`Navigate to profile of ${uid}`);
+                  navigate(`/profile/${uid}`);
+                }
+              }}// Navigate to mentor's profile
             />
             <CardContent sx={{ flexGrow: 1 }}>
               <Typography variant="body1" sx={{ fontWeight: 'bold' }}>Skills</Typography>

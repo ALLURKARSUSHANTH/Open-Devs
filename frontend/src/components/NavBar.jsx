@@ -79,6 +79,20 @@ const NavBar = () => {
     return () => unsubscribe();
   }, []);
 
+  useEffect(() => {
+    const getNotifications = async () => {
+      if (!loggedInUserId) return;
+      try {
+        const response = await fetch(`${API_URL}/notifications/notifications/${loggedInUserId}`);
+        const data = await response.json();
+        setNotifications(data);
+      } catch (err) {
+        setError('Failed to fetch notifications');
+      }
+    }
+    getNotifications();
+  }, [loggedInUserId]);
+
   const navLinks = [
     { name: 'Home', to: '/',icon : <HomeIcon /> },
     { name: 'Profile', to: `/profile/${loggedInUserId}`,icon : <AccountCircleIcon /> },
@@ -160,7 +174,13 @@ const NavBar = () => {
 
       {/* Search Results */}
       {searchTerm && (
-        <Box sx={{ padding: 2 }}>
+        <Box sx={{ padding: 2 ,
+          position: "absolute", 
+          top: "64px",
+          left: 0,
+          right: 0,
+          zIndex: 1300,
+          backgroundColor: theme === 'dark' ? '#1c1c1c' : '#ffffff', }}>
           {loading ? (
             <CircularProgress />
           ) : error ? (
@@ -171,6 +191,8 @@ const NavBar = () => {
               repos={repos}
               showAll={showAllResults}
               onShowAllClick={() => setShowAllResults(!showAllResults)}
+              onResultClick={() => setSearchTerm('')}  // Clears search term on click
+
             />
           )}
         </Box>

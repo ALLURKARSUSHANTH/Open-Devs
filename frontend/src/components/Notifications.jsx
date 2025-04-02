@@ -34,6 +34,11 @@ const Notifications = ({ loggedInUserId }) => {
         setNotifications((prevNotifications) => [notification, ...prevNotifications]);
         setNotificationCount((prevCount) => prevCount + 1);
       });
+      socket.on('mentorshipRequest', (notification) => {
+        console.log('New mentorship request received:', notification);
+        setNotifications((prevNotifications) => [notification, ...prevNotifications]);
+        setNotificationCount((prevCount) => prevCount + 1);
+      });
 
       // Cleanup on unmount
       return () => {
@@ -87,6 +92,42 @@ const Notifications = ({ loggedInUserId }) => {
     }
   };
 
+  const handleAcceptMentee = async (senderId) => {
+    setProcessing(true);
+    try {
+      console.log('Accepting mentorship request from:', senderId);
+      socket.emit('acceptMentee', { userId: loggedInUserId, senderId });
+
+      // Remove the notification from the list
+      setNotifications((prevNotifications) =>
+        prevNotifications.filter((notification) => notification.senderId._id !== senderId)
+      );
+      setNotificationCount((prevCount) => prevCount - 1);
+    } catch (error) {
+      console.error('Error accepting mentorship request:', error);
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleRejectMentee = async (senderId) => {
+    setProcessing(true);
+    try {
+      console.log('Rejecting mentorship request from:', senderId);
+      socket.emit('rejectMentee', { userId: loggedInUserId, senderId });
+
+      // Remove the notification from the list
+      setNotifications((prevNotifications) =>
+        prevNotifications.filter((notification) => notification.senderId._id !== senderId)
+      );
+      setNotificationCount((prevCount) => prevCount - 1);
+    } catch (error) {
+      console.error('Error rejecting mentorship request:', error);
+    } finally {
+      setProcessing(false);
+    }
+  };
+
   return (
     <>
       {/* Notification Bell Icon */}
@@ -124,6 +165,29 @@ const Notifications = ({ loggedInUserId }) => {
                     <IconButton
                       color="error"
                       onClick={() => handleRejectRequest(notification.senderId._id)}
+                      disabled={processing}
+                    >
+                      {processing ? <CircularProgress size={24} /> : <CloseIcon />}
+                    </IconButton>
+                  </Tooltip>
+                </Box>
+              )}
+
+              {notification.type === 'mentorshipRequest' && (
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                  <Tooltip title="Accept">
+                    <IconButton
+                      color="primary"
+                      onClick={() => handleAcceptMentee(notification.senderId._id)}
+                      disabled={processing}
+                    >
+                      {processing ? <CircularProgress size={24} /> : <CheckIcon />}
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Reject">
+                    <IconButton
+                      color="error"
+                      onClick={() => handleRejectMentee(notification.senderId._id)}
                       disabled={processing}
                     >
                       {processing ? <CircularProgress size={24} /> : <CloseIcon />}

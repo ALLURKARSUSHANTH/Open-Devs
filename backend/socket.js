@@ -294,7 +294,92 @@ const initializeSocket = (server) => {
           console.error('Error handling unfollow event:', error);
         }
       });
-    
+      
+      socket.on('mentorship-request', async (data) => {
+        const { userId, mentorId } = data;
+
+        try {
+          const user = await User.findById(userId);
+          const mentor = await User.findById(mentorId);
+
+          if (!user || !mentor) {
+            throw new Error('User or mentor not found');
+          }
+
+          // Create a notification for the mentor
+          const notification = new Notification({
+            userId: mentorId,
+            message: `${user.displayName} requested mentorship.`,
+            senderId: userId,
+            type: 'mentorshipRequest',
+          });
+          await notification.save();
+
+          // Emit the notification to the mentor
+          io.to(mentorId).emit('newNotification', notification);
+
+          console.log(`Mentorship request sent from ${userId} to ${mentorId}`);
+        } catch (error) {
+          console.error('Error handling mentorship request:', error);
+        }
+      });
+      socket.on('acceptMentorship', async (data) => {
+        const { userId, menteeId } = data;
+
+        try {
+          const user = await User.findById(userId);
+          const mentee = await User.findById(menteeId);
+
+          if (!user || !mentee) {
+            throw new Error('User or mentee not found');
+          }
+
+          // Create a notification for the mentee
+          const notification = new Notification({
+            userId: menteeId,
+            message: `${user.displayName} accepted your mentorship request.`,
+            senderId: userId,
+            type: 'mentorshipRequest',
+          });
+          await notification.save();
+
+          // Emit the notification to the mentee
+          io.to(menteeId).emit('newNotification', notification);
+
+          console.log(`Mentorship accepted from ${userId} to ${menteeId}`);
+        } catch (error) {
+          console.error('Error handling mentorship acceptance:', error);
+        }
+      });
+
+    socket.on('rejectMentorship', async (data) => {
+      const { userId, menteeId } = data;
+
+      try {
+        const user = await User.findById(userId);
+        const mentee = await User.findById(menteeId);
+
+        if (!user || !mentee) {
+          throw new Error('User or mentee not found');
+        }
+
+        // Create a notification for the mentee
+        const notification = new Notification({
+          userId: menteeId,
+          message: `${user.displayName} rejected your mentorship request.`,
+          senderId: userId,
+          type: 'mentorshipRequest',
+        });
+        await notification.save();
+
+        // Emit the notification to the mentee
+        io.to(menteeId).emit('newNotification', notification);
+
+        console.log(`Mentorship rejected from ${userId} to ${menteeId}`);
+      } catch (error) {
+        console.error('Error handling mentorship rejection:', error);
+      }
+    } );
 
     // Remove user from active users on disconnect
     socket.on('disconnect', () => {

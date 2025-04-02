@@ -379,10 +379,7 @@ const Profile = () => {
                         margin="normal"
                         disabled
                         sx={{
-                          "& .MuiInputBase-input.Mui-disabled": {
-                            color: "#000000",
-                            WebkitTextFillColor: "#000000",
-                          },
+                          backgroundColor: theme === 'dark' ? '#1c1c1c' : '#ffffff',
                         }}
                       />
                     </Grid>
@@ -467,10 +464,7 @@ const Profile = () => {
                             label={skill}
                             onDelete={() => handleRemoveSkill(skill)}
                             sx={{
-                              backgroundColor: '#e3f2fd',
-                              '& .MuiChip-deleteIcon': {
-                                color: '#1976d2'
-                              }
+                               backgroundColor: theme === 'dark' ? '#1c1c1c' : '#ffffff'
                             }}
                           />
                         ))}
