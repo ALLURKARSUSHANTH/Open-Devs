@@ -69,7 +69,7 @@ function AppRoutes() {
         <Route path="/" element={user ? <Home /> : <Navigate to="/signin" />} />
 
         <Route
-          path="/profile"
+          path="/profile/:uid"
           element={user ? <Profile /> : <Navigate to="/signin" />}
         />
         <Route

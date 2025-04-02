@@ -17,6 +17,7 @@ import {
   Favorite
 } from '@mui/icons-material';
 import MonacoEditor from "@monaco-editor/react";
+import { useNavigate } from 'react-router-dom';
 
 const PostCard = ({ 
   post, 
@@ -41,6 +42,7 @@ const PostCard = ({
   });
 
   const isAuthor = post.author?._id === loggedInUserId;
+  const navigate = useNavigate();
 
   const handleOptimisticLike = async (e, postId) => {
     e.stopPropagation();
@@ -154,7 +156,16 @@ const PostCard = ({
       )}
 
       <CardContent sx={{ flexGrow: 1 }}>
-        <Stack direction="row" spacing={1} alignItems="center" mb={2}>
+        <Stack direction="row" spacing={1} alignItems="center" mb={2}
+        onClick={(e) => {
+          e.stopPropagation();
+          const uid = post.author?._id;
+          if (uid) {
+            // Navigate to author's profile
+            console.log(`Navigate to profile of ${uid}`);
+            navigate(`/profile/${uid}`);
+          }
+        }}>
           <Avatar
             src={post.author?.photoURL}
             alt={post.author?.displayName?.[0]}

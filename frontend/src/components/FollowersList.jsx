@@ -21,7 +21,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import { useSnackbar } from 'notistack';
 import axios from 'axios';
 
-const FollowersList = memo(({ followers, open, onClose, loggedInUserId, onRemoveFollower }) => {
+const FollowersList = memo(({ followers, open, onClose,loggedInUserId, userId, onRemoveFollower }) => {
     const API_URL = import.meta.env.VITE_API_URL;
 
     const [confirmOpen, setConfirmOpen] = useState(false);
@@ -29,6 +29,7 @@ const FollowersList = memo(({ followers, open, onClose, loggedInUserId, onRemove
     const [removing, setRemoving] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const { enqueueSnackbar } = useSnackbar();
+    const currentUser = userId === loggedInUserId;
 
     const handleRemoveClick = useCallback((followerId) => {
         setSelectedFollowerId(followerId);
@@ -177,6 +178,7 @@ const FollowersList = memo(({ followers, open, onClose, loggedInUserId, onRemove
                                         >
                                             {follower.displayName}
                                         </Typography>
+                                        {currentUser ? (
                                         <Tooltip title="Remove follower">
                                             <Button
                                                 variant="contained"
@@ -197,6 +199,7 @@ const FollowersList = memo(({ followers, open, onClose, loggedInUserId, onRemove
                                                 Remove
                                             </Button>
                                         </Tooltip>
+                                        ):null}
                                     </Card>
                                 </Grid>
                             ))}

@@ -81,7 +81,7 @@ const NavBar = () => {
 
   const navLinks = [
     { name: 'Home', to: '/',icon : <HomeIcon /> },
-    { name: 'Profile', to: '/profile',icon : <AccountCircleIcon /> },
+    { name: 'Profile', to: `/profile/${loggedInUserId}`,icon : <AccountCircleIcon /> },
     { name: 'Post', to: '/post',icon : <PostAddIcon /> },
     { name: 'Mentoring', to: '/mentoring',icon : <CodeIcon /> },
     { name: 'Chat', to: '/chat' ,icon : <ChatIcon />},
@@ -96,14 +96,6 @@ const NavBar = () => {
       
       <AppBar position="sticky">
         <Toolbar>
-          {/* <IconButton
-            edge="start"
-            aria-label="menu"
-            sx={{ mr: 2, display: { sm: 'none' } }}
-            onClick={handleMobileMenuToggle} // Toggle mobile menu
-          >
-            <MenuIcon />
-          </IconButton> */}
           <Typography variant="h2" sx={{ flexGrow: 1, fontSize: { xs: '1.5rem', sm: '2rem', md: '2.5rem' } }}>
             <Link to="/" style={{ fontWeight: 'bold', color: 'white' }}>
               Open-Devs

@@ -232,6 +232,8 @@ const usePostActions = (isMobile) => {  // Add isMobile as parameter
     setReplyText,
     setSelectedPost,
     setCommentsDrawerOpen,
+    setLoading,
+    setError,
     
     // Actions
     toggleExpand,

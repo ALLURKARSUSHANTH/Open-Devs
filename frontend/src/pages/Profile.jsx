@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'; //comments not being shown in mobile view
 import { useSelector } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { skillsList } from '../services/Skills';
 import axios from 'axios';
 import {
@@ -40,6 +40,7 @@ import { fetchComments } from "../services/posts";
 import usePostActions from "../components/postActions";
 
 const Profile = () => {
+  const {uid} = useParams();
   const isMobile = useMediaQuery((theme) => theme.breakpoints.down("sm"));
   const {
     theme,
@@ -101,15 +102,26 @@ const Profile = () => {
   const [skills, setSkills] = useState(profile?.skills || []);
   const [newSkill, setNewSkill] = useState('');
   const [skillSuggestions, setSkillSuggestions] = useState([]);
+  const currentUser = uid ===loggedInUserId;
 
   useEffect(() => {
     const fetchCounts = async () => {
-      if (!loggedInUserId) return;
+      if (!uid) return;
       try {
+
+        const profileRes = await axios.get(`${API_URL}/users/firebase/${uid}`);
+        setProfileData((prev) => ({
+          ...prev,
+          displayName: profileRes.data.displayName,
+          email: profileRes.data.email,
+          mobileNumber: profileRes.data.mobileNumber,
+          photoURL: profileRes.data.photoURL,
+        }));
+        setSkills(profileRes.data.skills || []);
         const [followersRes, postsRes, connectionsRes] = await Promise.all([
-          axios.get(`${API_URL}/follow/${loggedInUserId}/followers-count`),
-          axios.get(`${API_URL}/posts/getProfile/${loggedInUserId}`),
-          axios.get(`${API_URL}/connections/connected/${loggedInUserId}`),
+          axios.get(`${API_URL}/follow/${uid}/followers-count`),
+          axios.get(`${API_URL}/posts/getProfile/${uid}`),
+          axios.get(`${API_URL}/connections/connected/${uid}`),
         ]);
 
         setFollowers(followersRes.data.followers || []);
@@ -139,7 +151,7 @@ const Profile = () => {
     };
 
     fetchCounts();
-  }, [loggedInUserId]);
+  }, [uid]);
 
   const handleLogout = async () => {
     try {
@@ -168,7 +180,7 @@ const Profile = () => {
 
   const handleSave = async () => {
     try {
-      await axios.put(`http://localhost:5000/profile/${loggedInUserId}`, {
+      await axios.put(`${API_URL}/users/firebase/${uid}`, {
         ...profileData,
         skills,
       });
@@ -188,7 +200,7 @@ const Profile = () => {
         setProfileData((prev) => ({ ...prev, photoURL: newPhotoURL }));
 
         try {
-          await axios.put(`${API_URL}/profile/${loggedInUserId}/photo`, {
+          await axios.put(`${API_URL}/users/firbase/${uid}/photo`, {
             photoURL: newPhotoURL,
           });
         } catch (error) {
@@ -225,7 +237,7 @@ const Profile = () => {
         setSkillSuggestions([]);
         
         // Send the update to the backend
-        await axios.patch(`http://localhost:5000/users/skills/${loggedInUserId}`, {
+        await axios.patch(`${API_URL}/users/skills/${uid}`, {
           skills: updatedSkills
         });
       } catch (error) {
@@ -244,7 +256,7 @@ const Profile = () => {
       setSkills(updatedSkills);
       
       // Send the update to the backend
-      await axios.patch(`http://localhost:5000/users/skills/${loggedInUserId}`, {
+      await axios.patch(`${API_URL}/users/skills/${uid}`, {
         skills: updatedSkills
       });
     } catch (error) {
@@ -558,7 +570,8 @@ const Profile = () => {
                             <Chip
                               key={index}
                               label={skill}
-                              sx={{ backgroundColor: '#e3f2fd' }}
+                              sx={{     backgroundColor: theme === 'dark' ? '#1c1c1c' : '#ffffff', // Add background color
+                              }}
                             />
                           ))}
                         </Box>
@@ -643,6 +656,7 @@ const Profile = () => {
                   onClose={handleCloseFollowersModal}
                   onRemoveFollower={handleRemoveFollower}
                   loggedInUserId={loggedInUserId}
+                  userId ={uid}
                 />
                 <ConnectionsList
                   connections={connections}
@@ -650,14 +664,17 @@ const Profile = () => {
                   onClose={handleCloseConnectionsModal}
                   onRemoveConnection={handleRemoveConnection}
                   loggedInUserId={loggedInUserId}
+                  userId ={uid}
                 />
 
+                {currentUser ? (
                 <Grid
                   container
                   justifyContent="center"
                   spacing={2}
                   sx={{ marginTop: 3 }}
                 >
+                 
                   <Grid item>
                     {isEditing ? (
                       <Button
@@ -679,6 +696,7 @@ const Profile = () => {
                       </Button>
                     )}
                   </Grid>
+                  
                   <Grid item>
                     <Button
                       onClick={handleLogout}
@@ -690,6 +708,7 @@ const Profile = () => {
                     </Button>
                   </Grid>
                 </Grid>
+                ): null}
               </Grid>
             </CardContent>
           </Card>
@@ -710,8 +729,10 @@ const Profile = () => {
                 <PostCard
                   key={post._id}
                   post={post}
-                  loggedInUserId={loggedInUserId}
+                  loggedInUserId={uid}
                   handleLike={handleLike}
+                  handleFollowToggle={handleFollowToggle}
+                  handleConnectToggle={handleConnectToggle}
                   toggleCommentInput={(postId) => {
                     setSelectedPost(posts.find(p => p._id === postId));
                     setCommentsDrawerOpen(true);
@@ -747,9 +768,11 @@ const Profile = () => {
               <Box sx={{ flex: 2 }}>
                 <PostCard
                   post={selectedPost}
-                  loggedInUserId={loggedInUserId}
+                  loggedInUserId={uid}
                   onClick={() => setSelectedPost(null)}
                   toggleExpand={toggleExpand}
+                  handleConnectToggle={handleConnectToggle}
+                  handleFollowToggle={handleFollowToggle}
                   handleLike={handleLike}
                   openModal={openModal}
                   theme={theme}
@@ -790,7 +813,7 @@ const Profile = () => {
                         post={post}
                         handleLike={handleLike}
                         onClick={() => setSelectedPost(post)}
-                        loggedInUserId={loggedInUserId}
+                        loggedInUserId={uid}
                         openModal={openModal}
                         theme={theme}
                       />
@@ -808,7 +831,7 @@ const Profile = () => {
                   post={post}
                   onClick={() => setSelectedPost(post)}
                   handleLike={handleLike}
-                  loggedInUserId={loggedInUserId}
+                  loggedInUserId={uid}
                   openModal={openModal}
                 />
               </Grid>

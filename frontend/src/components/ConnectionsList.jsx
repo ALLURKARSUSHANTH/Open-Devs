@@ -21,14 +21,14 @@ import SearchIcon from '@mui/icons-material/Search';
 import { useSnackbar } from 'notistack';
 import axios from 'axios';
 
-const ConnectionsList = ({ connections, open, onClose, onRemoveConnection, loggedInUserId }) => {
+const ConnectionsList = ({ connections, open, onClose, onRemoveConnection, loggedInUserId,userId }) => {
     const API_URL = import.meta.env.VITE_API_URL;
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [selectedConnectionId, setSelectedConnectionId] = useState(null);
     const [removing, setRemoving] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const { enqueueSnackbar } = useSnackbar();
-
+    const currentUser = loggedInUserId === userId;
     const handleRemoveClick = useCallback((connectionId) => {
         console.log('Connection ID to remove:', connectionId); // Debugging
         setSelectedConnectionId(connectionId);
@@ -170,6 +170,7 @@ const ConnectionsList = ({ connections, open, onClose, onRemoveConnection, logge
                                         >
                                             {connection.displayName}
                                         </Typography>
+                                        {currentUser ? (
                                         <Tooltip title="Remove connection">
                                             <Button
                                                 variant="contained"
@@ -192,6 +193,7 @@ const ConnectionsList = ({ connections, open, onClose, onRemoveConnection, logge
                                                 Remove
                                             </Button>
                                         </Tooltip>
+                                        ):null}
                                     </Card>
                                 </Grid>
                             ))}
