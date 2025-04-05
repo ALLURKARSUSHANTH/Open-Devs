@@ -9,19 +9,28 @@ import {
   Stack,
   Tooltip,
   Box,
-  CircularProgress
+  CircularProgress,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
+  Snackbar,
+  Alert
 } from '@mui/material';
 import {
   FavoriteBorderOutlined,
   CommentOutlined,
-  Favorite
+  Favorite,
+  DeleteOutline,
+  MoreVert
 } from '@mui/icons-material';
 import MonacoEditor from "@monaco-editor/react";
 import { useNavigate } from 'react-router-dom';
 
-const PostCard = ({ 
-  post, 
-  isExpanded = false, 
+const PostCard = ({
+  post,
+  isExpanded = false,
   onClick,
   loggedInUserId,
   handleFollowToggle,
@@ -30,7 +39,9 @@ const PostCard = ({
   toggleCommentInput,
   toggleExpand,
   openModal,
-  theme
+  theme,
+  handleDelete,
+  showActions = true
 }) => {
   const [editorLoaded, setEditorLoaded] = useState(false);
   const [localState, setLocalState] = useState({
@@ -40,6 +51,10 @@ const PostCard = ({
     isConnecting: false,
     isConnected: post.isConnected
   });
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [error, setError] = useState(null);
+  const [menuAnchor, setMenuAnchor] = useState(null);
 
   const isAuthor = post.author?._id === loggedInUserId;
   const navigate = useNavigate();
@@ -48,7 +63,7 @@ const PostCard = ({
     e.stopPropagation();
     const wasLiked = localState.isLiked;
     const newLikeCount = wasLiked ? localState.likeCount - 1 : localState.likeCount + 1;
-    
+
     setLocalState(prev => ({
       ...prev,
       isLiked: !wasLiked,
@@ -58,19 +73,19 @@ const PostCard = ({
     try {
       await handleLike(postId);
     } catch (error) {
-      // Revert if the API call fails
       setLocalState(prev => ({
         ...prev,
         isLiked: wasLiked,
         likeCount: localState.likeCount
       }));
+      setError('Failed to like post');
     }
   };
 
   const handleOptimisticFollow = async (e, userId) => {
     e.stopPropagation();
     const wasFollowing = localState.isFollowing;
-    
+
     setLocalState(prev => ({
       ...prev,
       isFollowing: !wasFollowing
@@ -79,11 +94,11 @@ const PostCard = ({
     try {
       await handleFollowToggle(userId);
     } catch (error) {
-      // Revert if the API call fails
       setLocalState(prev => ({
         ...prev,
         isFollowing: wasFollowing
       }));
+      setError('Failed to update follow status');
     }
   };
 
@@ -106,7 +121,39 @@ const PostCard = ({
         ...prev,
         isConnecting: false
       }));
+      setError('Failed to connect');
     }
+  };
+
+  const handleDeleteClick = (e) => {
+    e.stopPropagation();
+    setDeleteConfirmOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    setDeleteConfirmOpen(false);
+    setIsDeleting(true);
+    try {
+      await handleDelete(post._id);
+    } catch (error) {
+      console.error("Failed to delete post:", error);
+      setError('Failed to delete post');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleCloseError = () => {
+    setError(null);
+  };
+
+  const handleMenuOpen = (e) => {
+    e.stopPropagation();
+    setMenuAnchor(e.currentTarget);
+  };
+
+  const handleMenuClose = () => {
+    setMenuAnchor(null);
   };
 
   return (
@@ -118,6 +165,7 @@ const PostCard = ({
         display: "flex",
         flexDirection: "column",
         transition: 'all 0.3s ease',
+        position: 'relative',
         '&:hover': {
           boxShadow: '0 8px 16px rgba(0,0,0,0.1)',
           transform: 'translateY(-2px)'
@@ -125,58 +173,75 @@ const PostCard = ({
       }}
       onClick={!isExpanded ? onClick : undefined}
     >
-      {/* Author and follow/connect buttons */}
-      {!isAuthor && post.author?._id && (
-        <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 1 }}>
-          <Stack direction="row" spacing={1}>
-            <Button
-              color={localState.isFollowing ? "error" : "primary"}
-              size="small"
-              sx={{ borderRadius: "8px" }}
-              onClick={(e) => handleOptimisticFollow(e, post.author._id)}
-              disabled={localState.isConnecting}
-            >
-              {localState.isFollowing ? "Unfollow" : "Follow"}
-            </Button>
-            {!localState.isConnected && (
-              <Button
-                variant="contained"
-                color="secondary"
-                size="small"
-                sx={{ borderRadius: "8px" }}
-                onClick={(e) => handleOptimisticConnect(e, post.author._id)}
-                disabled={localState.isConnecting}
-                startIcon={localState.isConnecting ? <CircularProgress size={14} /> : null}
-              >
-                {localState.isConnecting ? "Connecting..." : "Connect"}
-              </Button>
-            )}
-          </Stack>
-        </Box>
-      )}
-
-      <CardContent sx={{ flexGrow: 1 }}>
-        <Stack direction="row" spacing={1} alignItems="center" mb={2}
-        onClick={(e) => {
-          e.stopPropagation();
-          const uid = post.author?._id;
-          if (uid) {
-            // Navigate to author's profile
-            console.log(`Navigate to profile of ${uid}`);
-            navigate(`/profile/${uid}`);
-          }
-        }}>
+      {/* Header with author info and actions */}
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <Stack 
+          direction="row" 
+          spacing={1} 
+          alignItems="center"
+          onClick={(e) => {
+            e.stopPropagation();
+            const uid = post.author?._id;
+            if (uid) {
+              navigate(`/profile/${uid}`);
+            }
+          }}
+          sx={{ cursor: 'pointer' }}
+        >
           <Avatar
             src={post.author?.photoURL}
             alt={post.author?.displayName?.[0]}
             sx={{ width: 50, height: 50 }}
           />
-          <Typography variant="h6" sx={{ fontWeight: "bold" }}>
-            {post.author?.displayName || "Unknown Author"}
-          </Typography>
+          <Box>
+            <Typography variant="h6" sx={{ fontWeight: "bold" }}>
+              {post.author?.displayName || "Unknown Author"}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              {new Date(post.createdAt).toLocaleDateString()}
+            </Typography>
+          </Box>
         </Stack>
 
-        <Typography paragraph>
+        <Box>
+          {!isAuthor && post.author?._id && (
+            <Stack direction="row" spacing={1}>
+              <Button
+                color={localState.isFollowing ? "error" : "primary"}
+                size="small"
+                sx={{ borderRadius: "8px" }}
+                onClick={(e) => handleOptimisticFollow(e, post.author._id)}
+                disabled={localState.isConnecting}
+              >
+                {localState.isFollowing ? "Unfollow" : "Follow"}
+              </Button>
+              {!localState.isConnected && (
+                <Button
+                  variant="contained"
+                  color="secondary"
+                  size="small"
+                  sx={{ borderRadius: "8px" }}
+                  onClick={(e) => handleOptimisticConnect(e, post.author._id)}
+                  disabled={localState.isConnecting}
+                  startIcon={localState.isConnecting ? <CircularProgress size={14} /> : null}
+                >
+                  {localState.isConnecting ? "Connecting..." : "Connect"}
+                </Button>
+              )}
+            </Stack>
+          )}
+
+          {isAuthor && (
+            <IconButton onClick={handleMenuOpen}>
+              <MoreVert />
+            </IconButton>
+          )}
+        </Box>
+      </Box>
+
+      <CardContent sx={{ flexGrow: 1, py: 0 }}>
+        {/* Post Content */}
+        <Typography paragraph sx={{ mb: 2 }}>
           {post.expanded || post.content.length <= 100
             ? post.content
             : `${post.content.substring(0, 100)}...`}
@@ -187,7 +252,7 @@ const PostCard = ({
                 e.stopPropagation();
                 toggleExpand(post._id);
               }}
-              sx={{ color: 'primary.main' }}
+              sx={{ color: 'primary.main', ml: 1 }}
             >
               {post.expanded ? "See Less" : "See More"}
             </Button>
@@ -251,7 +316,7 @@ const PostCard = ({
             {editorLoaded || isExpanded ? (
               <MonacoEditor
                 height={isExpanded ? "300px" : "200px"}
-                language="javascript"
+                language={post.codeLanguage || "javascript"}
                 theme={theme === "dark" ? "vs-dark" : "light"}
                 value={post.codeSnippet}
                 options={{
@@ -285,48 +350,148 @@ const PostCard = ({
       </CardContent>
 
       {/* Actions */}
-      <Box sx={{ display: "flex", gap: 1 }}>
-        <Tooltip title="Like">
-          <IconButton
-            onClick={(e) => handleOptimisticLike(e, post._id)}
-            sx={{
-              transition: 'transform 0.2s',
-              '&:hover': {
-                transform: 'scale(1.1)'
-              }
-            }}
-          >
-            {localState.isLiked ? (
-              <Favorite sx={{ color: "red" }} />
-            ) : (
-              <FavoriteBorderOutlined />
-            )}
-            <Typography sx={{ ml: 0.5 }}>
-              {localState.likeCount}
-            </Typography>
-          </IconButton>
-        </Tooltip>
+      {showActions && (
+        <Box sx={{
+          display: "flex",
+          gap: 1,
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          mt: 'auto',
+          pt: 1
+        }}>
+          <Box sx={{ display: "flex", gap: 1 }}>
+            <Tooltip title="Like">
+              <IconButton
+                onClick={(e) => handleOptimisticLike(e, post._id)}
+                sx={{
+                  transition: 'transform 0.2s',
+                  '&:hover': {
+                    transform: 'scale(1.1)',
+                    color: 'error.main'
+                  }
+                }}
+              >
+                {localState.isLiked ? (
+                  <Favorite sx={{ color: "error.main" }} />
+                ) : (
+                  <FavoriteBorderOutlined />
+                )}
+                <Typography sx={{ ml: 0.5 }}>
+                  {localState.likeCount}
+                </Typography>
+              </IconButton>
+            </Tooltip>
 
-        <Tooltip title="Comment">
-          <IconButton
-            onClick={(e) => {
-              e.stopPropagation();
-              toggleCommentInput(post._id);
-            }}
+            <Tooltip title="Comment">
+              <IconButton
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleCommentInput(post._id);
+                }}
+                sx={{
+                  transition: 'transform 0.2s',
+                  '&:hover': {
+                    transform: 'scale(1.1)',
+                    color: 'primary.main'
+                  }
+                }}
+              >
+                <CommentOutlined />
+                <Typography sx={{ ml: 0.5 }}>
+                  {post.comments?.length || 0}
+                </Typography>
+              </IconButton>
+            </Tooltip>
+          </Box>
+
+          {/* DELETE Button (only shown to author) */}
+          {isAuthor && (
+            <Tooltip title="Delete">
+              <IconButton
+                onClick={handleDeleteClick}
+                sx={{
+                  transition: 'all 0.2s ease-out',
+                  color: 'error.main',
+                  '&:hover': {
+                    backgroundColor: 'rgba(244, 67, 54, 0.08)',
+                    transform: 'translateY(-1px)'
+                  }
+                }}
+                disabled={isDeleting}
+              >
+                {isDeleting ? (
+                  <CircularProgress size={24} thickness={4} color="error" />
+                ) : (
+                  <DeleteOutline />
+                )}
+              </IconButton>
+            </Tooltip>
+          )}
+        </Box>
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteConfirmOpen}
+        onClose={() => setDeleteConfirmOpen(false)}
+        PaperProps={{
+          sx: {
+            borderRadius: '12px',
+            minWidth: '400px'
+          }
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 600 }}>Confirm Deletion</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to delete this post? This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2, pt: 0 }}>
+          <Button
+            onClick={() => setDeleteConfirmOpen(false)}
             sx={{
-              transition: 'transform 0.2s',
-              '&:hover': {
-                transform: 'scale(1.1)'
-              }
+              textTransform: 'none',
+              borderRadius: '6px',
+              px: 2,
+              py: 1
             }}
           >
-            <CommentOutlined />
-            <Typography sx={{ ml: 0.5 }}>
-              {post.comments?.length || 0}
-            </Typography>
-          </IconButton>
-        </Tooltip>
-      </Box>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleConfirmDelete}
+            color="error"
+            variant="contained"
+            disabled={isDeleting}
+            sx={{
+              textTransform: 'none',
+              borderRadius: '6px',
+              px: 2,
+              py: 1,
+              fontWeight: 'bold',
+              '&:hover': {
+                backgroundColor: 'error.dark'
+              }
+            }}
+            startIcon={isDeleting ? <CircularProgress size={16} /> : null}
+          >
+            {isDeleting ? 'Deleting...' : 'Delete'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Error Snackbar */}
+      <Snackbar
+        open={!!error}
+        autoHideDuration={6000}
+        onClose={handleCloseError}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert onClose={handleCloseError} severity="error" sx={{ width: '100%' }}>
+          {error}
+        </Alert>
+      </Snackbar>
     </Card>
   );
 };

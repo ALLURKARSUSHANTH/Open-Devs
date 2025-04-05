@@ -153,6 +153,30 @@ const Profile = () => {
     fetchCounts();
   }, [uid]);
 
+  const handleDeletePost = async (postId) => {
+  try {
+    // Optimistically update UI
+    const postToDelete = posts.find(post => post._id === postId);
+    setPosts(posts.filter(post => post._id !== postId));
+    
+    // If the post was selected, clear selection
+    if (selectedPost?._id === postId) {
+      setSelectedPost(null);
+    }
+
+    // Make API call
+    await axios.delete(`${API_URL}/posts/deletePost/${postId}`);
+    
+  } catch (error) {
+    console.error("Delete failed:", error);
+    setError(error.response?.data?.message || "Failed to delete post");
+    // Revert UI if API fails
+    if (postToDelete) {
+      setPosts([...posts, postToDelete]);
+    }
+  }
+};
+
   const handleLogout = async () => {
     try {
       await logout();
@@ -248,6 +272,7 @@ const Profile = () => {
       }
     }
   };
+
 
   const handleRemoveSkill = async (skillToRemove) => {
     try {
@@ -727,6 +752,7 @@ const Profile = () => {
                   handleLike={handleLike}
                   handleFollowToggle={handleFollowToggle}
                   handleConnectToggle={handleConnectToggle}
+                  handleDelete={handleDeletePost}
                   toggleCommentInput={(postId) => {
                     setSelectedPost(posts.find(p => p._id === postId));
                     setCommentsDrawerOpen(true);
@@ -768,6 +794,7 @@ const Profile = () => {
                   handleConnectToggle={handleConnectToggle}
                   handleFollowToggle={handleFollowToggle}
                   handleLike={handleLike}
+                  handleDelete={handleDeletePost}
                   openModal={openModal}
                   theme={theme}
                   isExpanded
@@ -809,6 +836,7 @@ const Profile = () => {
                         onClick={() => setSelectedPost(post)}
                         loggedInUserId={uid}
                         openModal={openModal}
+                        handleDelete={handleDeletePost}
                         theme={theme}
                       />
                     </Grid>
@@ -826,6 +854,7 @@ const Profile = () => {
                   onClick={() => setSelectedPost(post)}
                   handleLike={handleLike}
                   loggedInUserId={uid}
+                  handleDelete={handleDeletePost}
                   openModal={openModal}
                 />
               </Grid>

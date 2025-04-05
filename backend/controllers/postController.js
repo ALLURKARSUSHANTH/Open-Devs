@@ -196,3 +196,36 @@ exports.addReply = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+exports.deletePost = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // First find the post to get the author
+    const post = await Post.findById(id);
+    if (!post) {
+      return res.status(404).json({ message: "Post not found" });
+    }
+
+    // Delete the post
+    await Post.findByIdAndDelete(id);
+
+    // Remove the post reference from the user's posts array
+    await User.findByIdAndUpdate(
+      post.author, // The author's ID from the post
+      { $pull: { posts: id } }, // Remove the post ID from the posts array
+      { new: true }
+    );
+
+    res.status(200).json({ 
+      message: "Post deleted successfully",
+      deletedPostId: id
+    });
+  } catch (error) {
+    console.error("Error in deletePost:", error);
+    res.status(500).json({ 
+      error: "Internal server error",
+      message: error.message 
+    });
+  }
+};
