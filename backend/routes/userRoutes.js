@@ -8,6 +8,8 @@ router.get('/firebase/:firebaseUid', userController.getUserByFirebaseUid);
 router.put('/update/:firebaseUid', userController.updateProfile);
 router.get('/search/:query', userController.searchUser);
 router.patch('/skills/:firebaseUid', userController.addUserSkills);
+router.get('/daily-login/:firebaseUid', userController.dailyLogin);
+router.get('/leaderboard', userController.getLeaderboard);
 //router.delete('/skills/:firebaseUid', userController.removeUserSkill);
 
 module.exports = router;

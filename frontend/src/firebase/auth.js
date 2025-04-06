@@ -1,5 +1,11 @@
 import { auth, githubProvider, googleProvider } from './firebaseConfig';
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signInWithPopup, signOut } from 'firebase/auth';
+import { createUserWithEmailAndPassword, 
+  signInWithEmailAndPassword, 
+  signInWithPopup, 
+  signOut,
+  sendPasswordResetEmail,
+  verifyPasswordResetCode,
+  confirmPasswordReset } from 'firebase/auth';
 import axios from 'axios';
 
   const API_URL = import.meta.env.VITE_API_URL;
@@ -27,6 +33,7 @@ export const registerWithEmailAndPassword = async (email, password) => {
     await saveUserToBackend(userCredential.user);
     return userCredential.user;
   } catch (error) {
+    alert(error.message);
     console.error("Error registering:", error.message);
   }
 };
@@ -39,6 +46,7 @@ export const loginWithEmailAndPassword = async (email, password) => {
     await saveUserToBackend(userCredential.user);
     return userCredential.user;
   } catch (error) {
+    alert(error.message);
     console.error("Error logging in:", error.message);
   }
 };
@@ -51,6 +59,7 @@ export const signInWithGoogle = async () => {
     await saveUserToBackend(result.user);
     return result.user;
   } catch (error) {
+    alert(error.message);
     console.error("Error logging in with Google:", error.message);
   }
 };
@@ -63,6 +72,7 @@ export const signInWithGithub = async () => {
     await saveUserToBackend(result.user);
     return result.user;
   } catch (error) {
+    alert(error.message);
     console.error("Error logging in with Github:", error.message);
   }
 };
@@ -74,5 +84,33 @@ export const logout = async () => {
     console.log("User logged out");
   } catch (error) {
     console.error("Error logging out:", error.message);
+  }
+};
+
+
+export const sendPasswordReset = async (email) => {
+  try {
+    await sendPasswordResetEmail(auth, email);
+    return { success: true, message: 'Password reset email sent!' };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
+};
+
+export const verifyResetCode = async (oobCode) => {
+  try {
+    const email = await verifyPasswordResetCode(auth, oobCode);
+    return { success: true, email };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
+};
+
+export const confirmPasswordResetWithCode = async (oobCode, newPassword) => {
+  try {
+    await confirmPasswordReset(auth, oobCode, newPassword);
+    return { success: true, message: 'Password reset successful!' };
+  } catch (error) {
+    return { success: false, message: error.message };
   }
 };

@@ -2,6 +2,7 @@ const { Server } = require('socket.io');
 const Chat = require('./models/chatModel');
 const User = require('./models/User');
 const Notification = require('./models/Notification');
+const {POINT_RULES,getCurrentLevel} = require('./utils/levels');
 
 const initializeSocket = (server) => {
   const io = new Server(server, {
@@ -172,6 +173,25 @@ const initializeSocket = (server) => {
         // Save both users
         await user.save();
         await sender.save();
+
+        const [user1, user2] = await Promise.all([
+          User.findById(userId),
+          User.findById(connectionId)
+        ]);
+    
+        if (user1) {
+          user1.points += POINT_RULES.connectionMade;
+          const newLevel1 = getCurrentLevel(user1.points);
+          if (newLevel1 !== user1.level) user1.level = newLevel1;
+          await user1.save();
+        }
+    
+        if (user2) {
+          user2.points += POINT_RULES.connectionMade;
+          const newLevel2 = getCurrentLevel(user2.points);
+          if (newLevel2 !== user2.level) user2.level = newLevel2;
+          await user2.save();
+        }
 
         // Mark the notification as read
         await Notification.updateMany(

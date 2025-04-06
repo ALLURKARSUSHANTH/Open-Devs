@@ -22,12 +22,6 @@ module.exports = (io) => {
         return res.status(404).json({ message: 'Sender or target user not found' });
       }
 
-      const isRequestSent = targetUser.connectionRequests.includes(senderId);
-
-      if (isRequestSent) {
-        return res.status(400).json({ message: 'Connection request already sent' });
-      }
-
       targetUser.connectionRequests.push(senderId);
       await targetUser.save();
 

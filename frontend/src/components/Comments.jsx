@@ -12,6 +12,7 @@ import {
   Drawer,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
+import { useNavigate } from 'react-router-dom';
 
 const CommentsSection = ({
   comments,
@@ -30,6 +31,7 @@ const CommentsSection = ({
   handleMobileClose
 }) => {
   const isMobile = useMediaQuery((theme) => theme.breakpoints.down('sm'));
+  const navigate = useNavigate();
 
   const content = (
     <Box sx={{ 
@@ -82,8 +84,17 @@ const CommentsSection = ({
       {/* Comments list */}
       {comments.map((comment) => (
         <Box key={comment._id} sx={{ mb: 3 }}>
-          <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
-            <Avatar src={comment.user?.photoURL} sx={{ width: isMobile ? 28 : 32, height: isMobile ? 28 : 32 }} />
+          <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}
+          onClick={(e) => {
+            e.stopPropagation();
+            const uid = comment.user?._id;
+            if (uid) {
+              // Navigate to author's profile
+              console.log(`Navigate to profile of ${uid}`);
+              navigate(`/profile/${uid}`);
+            }
+          }} >
+            <Avatar src={comment.user?.photoURL} sx={{ width: isMobile ? 28 : 32, height: isMobile ? 28 : 32 }}/>
             <Typography variant={isMobile ? 'body2' : 'subtitle2'}>
               {comment.user?.displayName}
             </Typography>

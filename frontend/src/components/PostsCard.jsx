@@ -21,7 +21,8 @@ import { useNavigate } from 'react-router-dom';
 
 const PostCard = ({ 
   post, 
-  isExpanded = false, 
+  isExpanded , 
+  expandedPosts = {},
   onClick,
   loggedInUserId,
   handleFollowToggle,
@@ -40,6 +41,7 @@ const PostCard = ({
     isConnecting: false,
     isConnected: post.isConnected
   });
+  
 
   const isAuthor = post.author?._id === loggedInUserId;
   const navigate = useNavigate();
@@ -177,23 +179,21 @@ const PostCard = ({
         </Stack>
 
         <Typography paragraph>
-          {post.expanded || post.content.length <= 100
+          {expandedPosts[post._id] || post.content.length <= 100
             ? post.content
             : `${post.content.substring(0, 100)}...`}
           {post.content.length > 100 && (
             <Button
               size="small"
-              onClick={(e) => {
-                e.stopPropagation();
-                toggleExpand(post._id);
+              onClick={() => {
+                toggleExpand(post._id);  // Make sure this is called
               }}
               sx={{ color: 'primary.main' }}
             >
-              {post.expanded ? "See Less" : "See More"}
+              {expandedPosts[post._id] ? "See Less" : "See More"}
             </Button>
           )}
         </Typography>
-
         {/* Images */}
         {post.imgUrls?.length > 0 && (
           <Box
