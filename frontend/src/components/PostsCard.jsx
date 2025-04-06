@@ -171,7 +171,7 @@ const PostCard = ({
           <Avatar
             src={post.author?.photoURL}
             alt={post.author?.displayName?.[0]}
-            sx={{ width: 50, height: 50 }}
+            sx={{ width: 50, height: 50 ,cursor:"pointer"}}
           />
           <Typography variant="h6" sx={{ fontWeight: "bold" }}>
             {post.author?.displayName || "Unknown Author"}

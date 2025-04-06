@@ -344,8 +344,7 @@ const Profile = () => {
             style={{
               maxWidth: '100%',
               maxHeight: '100%',
-              objectFit: 'contain',
-              borderRadius: '50%'
+              objectFit: 'contain'
             }}
           />
         </Box>

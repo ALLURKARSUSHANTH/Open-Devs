@@ -94,7 +94,7 @@ const CommentsSection = ({
               navigate(`/profile/${uid}`);
             }
           }} >
-            <Avatar src={comment.user?.photoURL} sx={{ width: isMobile ? 28 : 32, height: isMobile ? 28 : 32 }}/>
+            <Avatar src={comment.user?.photoURL} sx={{ width: isMobile ? 28 : 32, height: isMobile ? 28 : 32 ,cursor:"pointer"}}/>
             <Typography variant={isMobile ? 'body2' : 'subtitle2'}>
               {comment.user?.displayName}
             </Typography>
