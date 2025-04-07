@@ -42,6 +42,7 @@ import usePostActions from "../components/postActions";
 const Profile = () => {
   const {uid} = useParams();
   const isMobile = useMediaQuery((theme) => theme.breakpoints.down("sm"));
+  const [profilePicModalOpen, setProfilePicModalOpen] = useState(false);
   const {
     theme,
     loading,
@@ -54,6 +55,7 @@ const Profile = () => {
     viewReplies,
     commentsDrawerOpen,
     commentText,
+    expandedPosts,
     setLoading,
     setError,
     setCommentText,
@@ -86,8 +88,9 @@ const Profile = () => {
   const [profileData, setProfileData] = useState({
     displayName: profile?.displayName || "User",
     email: profile?.email || "No email available",
-    mobileNumber: profile?.mobileNumber || "",
     photoURL: profile?.photoURL || "",
+    level: profile?.level || "Beginner",
+    points : profile?.points || 0
   });
   const [followers, setFollowers] = useState([]);
   const [connections, setConnections] = useState([]);
@@ -114,8 +117,9 @@ const Profile = () => {
           ...prev,
           displayName: profileRes.data.displayName,
           email: profileRes.data.email,
-          mobileNumber: profileRes.data.mobileNumber,
           photoURL: profileRes.data.photoURL,
+          level: profileRes.data.level,
+          points: profileRes.data.points,
         }));
         setSkills(profileRes.data.skills || []);
         const [followersRes, postsRes, connectionsRes] = await Promise.all([
@@ -202,12 +206,17 @@ const Profile = () => {
     );
   }, []);
 
-  const handleSave = async () => {
+  const handleSave = async (skill = null) => {
     try {
-      await axios.put(`${API_URL}/users/firebase/${uid}`, {
-        ...profileData,
-        skills,
+      await axios.put(`${API_URL}/users/update/${uid}`, {
+        displayName: profileData.displayName,
+        photoURL: profileData.photoURL,       
       });
+      if(profileData.skills){
+      await axios.patch(`${API_URL}/users/skills/${uid}`, {
+        skills: profileData.skills,
+      });
+    }
       setIsEditing(false);
     } catch (error) {
       console.error("Error updating profile:", error);
@@ -222,15 +231,6 @@ const Profile = () => {
       reader.onloadend = async () => {
         const newPhotoURL = reader.result;
         setProfileData((prev) => ({ ...prev, photoURL: newPhotoURL }));
-
-        try {
-          await axios.put(`${API_URL}/users/firbase/${uid}/photo`, {
-            photoURL: newPhotoURL,
-          });
-        } catch (error) {
-          console.error("Error updating photo:", error);
-          setError("Failed to update photo.");
-        }
       };
       reader.readAsDataURL(file);
     }
@@ -256,14 +256,10 @@ const Profile = () => {
       try {
         // Update local state immediately for better UX
         const updatedSkills = [...skills, skillToAdd];
+        setProfileData((prev) => ({ ...prev, skills: updatedSkills }));
         setSkills(updatedSkills);
         setNewSkill('');
         setSkillSuggestions([]);
-        
-        // Send the update to the backend
-        await axios.patch(`${API_URL}/users/skills/${uid}`, {
-          skills: updatedSkills
-        });
       } catch (error) {
         console.error('Error updating skills:', error);
         // Revert local state if API call fails
@@ -330,6 +326,56 @@ const Profile = () => {
     return <Box sx={{ color: "error.main", p: 2 }}>Error: {error}</Box>;
   }
 
+  const ProfilePicModal = () => (
+    <Modal open={profilePicModalOpen} onClose={() => setProfilePicModalOpen(false)}>
+      <Box
+        sx={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: "rgba(0,0,0,0.9)",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          p: 2,
+        }}
+      >
+        <IconButton
+          onClick={() => setProfilePicModalOpen(false)}
+          sx={{ 
+            position: "absolute", 
+            top: 16, 
+            right: 16, 
+            color: "white",
+            zIndex: 1
+          }}
+        >
+          <CloseIcon fontSize="large" />
+        </IconButton>
+        <Box
+          sx={{
+            maxWidth: '90vw',
+            maxHeight: '90vh',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center'
+          }}
+        >
+          <img
+            src={profileData.photoURL}
+            alt={`${profileData.displayName}'s profile`}
+            style={{
+              maxWidth: '100%',
+              maxHeight: '100%',
+              objectFit: 'contain'
+            }}
+          />
+        </Box>
+      </Box>
+    </Modal>
+  );
   return (
     <Box sx={{ width: "100%", padding: 0 }}>
       <Grid
@@ -360,15 +406,19 @@ const Profile = () => {
                 <Avatar
                   src={profileData.photoURL}
                   alt={profileData.displayName}
+                  onClick={() => profileData.photoURL && setProfilePicModalOpen(true)}
                   sx={{
                     width: 120,
                     height: 120,
                     marginTop: "-60px",
                     border: "4px solid white",
                     boxShadow: 3,
+                    cursor: profileData.photoURL ? 'pointer' : 'default',
+                    '&:hover': {
+                      opacity: profileData.photoURL ? 0.9 : 1
+                    }
                   }}
                 />
-
                 {isEditing ? (
                   <Grid
                     container
@@ -408,20 +458,6 @@ const Profile = () => {
                         }}
                       />
                     </Grid>
-                    <Grid item>
-                      <TextField
-                        label="Mobile Number"
-                        value={profileData.mobileNumber}
-                        onChange={(e) =>
-                          setProfileData((prev) => ({
-                            ...prev,
-                            mobileNumber: e.target.value,
-                          }))
-                        }
-                        fullWidth
-                        margin="normal"
-                      />
-                    </Grid>
 
                     {/* Skills Section */}
                     <Grid item>
@@ -442,14 +478,6 @@ const Profile = () => {
                           sx={{ flexGrow: 1 }}
                           fullWidth
                         />
-                        <Button
-                          variant="contained"
-                          onClick={() => handleAddSkill()}
-                          size="small"
-                          sx={{ borderRadius: '4px' }}
-                        >
-                          Add
-                        </Button>
                       </Box>
 
                       {skillSuggestions.length > 0 && (
@@ -577,7 +605,10 @@ const Profile = () => {
                       {profileData.email}
                     </Typography>
                     <Typography variant="body1" color="text.secondary">
-                      {profileData.mobileNumber || "No mobile number available"}
+                      {profileData.level}
+                    </Typography>
+                    <Typography variant="body1" color="text.secondary">
+                      {profileData.points}
                     </Typography>
                     {skills.length > 0 && (
                       <Box sx={{ marginTop: 2 }}>
@@ -757,6 +788,7 @@ const Profile = () => {
                     setSelectedPost(posts.find(p => p._id === postId));
                     setCommentsDrawerOpen(true);
                   }}
+                  expandedPosts={expandedPosts}  // Pass the expandedPosts state
                   toggleExpand={toggleExpand}
                   openModal={openModal}
                   theme={theme}
@@ -791,6 +823,7 @@ const Profile = () => {
                   loggedInUserId={uid}
                   onClick={() => setSelectedPost(null)}
                   toggleExpand={toggleExpand}
+                  expandedPosts={expandedPosts}  // Pass the expandedPosts state
                   handleConnectToggle={handleConnectToggle}
                   handleFollowToggle={handleFollowToggle}
                   handleLike={handleLike}
@@ -906,6 +939,7 @@ const Profile = () => {
           </Swiper>
         </Box>
       </Modal>
+      <ProfilePicModal />
     </Box>
   );
 };

@@ -30,6 +30,7 @@ const GetPosts = () => {
     selectedImages,
     isModalOpen,
     postComments,
+    expandedPosts,
     replyInputVisible,
     replyText,
     viewReplies,
@@ -92,6 +93,7 @@ const GetPosts = () => {
                 handleConnectToggle={handleConnectToggle}
                 handleLike={handleLike}
                 toggleCommentInput={toggleCommentInput}
+                expandedPosts={expandedPosts}  // Pass the expandedPosts state
                 toggleExpand={toggleExpand}
                 openModal={openModal}
                 theme={theme}
@@ -128,6 +130,7 @@ const GetPosts = () => {
                 handleConnectToggle={handleConnectToggle}
                 handleLike={handleLike}
                 toggleCommentInput={toggleCommentInput}
+                expandedPosts={expandedPosts}  // Pass the expandedPosts state
                 toggleExpand={toggleExpand}
                 openModal={openModal}
                 theme={theme}

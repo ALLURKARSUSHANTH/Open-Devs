@@ -191,7 +191,7 @@ const PostCard = ({
           <Avatar
             src={post.author?.photoURL}
             alt={post.author?.displayName?.[0]}
-            sx={{ width: 50, height: 50 }}
+            sx={{ width: 50, height: 50 ,cursor:"pointer"}}
           />
           <Box>
             <Typography variant="h6" sx={{ fontWeight: "bold" }}>
@@ -248,17 +248,15 @@ const PostCard = ({
           {post.content.length > 100 && (
             <Button
               size="small"
-              onClick={(e) => {
-                e.stopPropagation();
-                toggleExpand(post._id);
+              onClick={() => {
+                toggleExpand(post._id);  // Make sure this is called
               }}
               sx={{ color: 'primary.main', ml: 1 }}
             >
-              {post.expanded ? "See Less" : "See More"}
+              {expandedPosts[post._id] ? "See Less" : "See More"}
             </Button>
           )}
         </Typography>
-
         {/* Images */}
         {post.imgUrls?.length > 0 && (
           <Box

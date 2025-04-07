@@ -23,6 +23,7 @@ import {
 } from '@mui/material';
 import { styled } from '@mui/system';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import { useNavigate } from 'react-router-dom';
 
 // My custom UI for chat
 const StyledPaper = styled(Paper)(({ theme }) => ({
@@ -65,6 +66,7 @@ const Chat = () => {
   const [unreadCount, setUnreadCount] = useState({});
   const messageRef = useRef(null);
   const API_URL = import.meta.env.VITE_API_URL;
+  const navigate = useNavigate();
 
   
   const theme = useTheme();
@@ -296,8 +298,17 @@ const Chat = () => {
               <ArrowBackIcon />
             </IconButton>
             <Avatar
-                    src={connections.find((c) => c._id === selectedConnection)?.photoURL}
-                    sx={{ width: 40, height: 40, mr: 2 }}
+              src={connections.find((c) => c._id === selectedConnection)?.photoURL}
+              sx={{ width: 40, height: 40, mr: 2,cursor:"pointer" }}
+              onClick={(e) => {
+                e.stopPropagation();
+                const uid = connections.find((c) => c._id === selectedConnection)?._id;
+                if (uid) {
+                  // Navigate to author's profile
+                  console.log(`Navigate to profile of ${uid}`);
+                  navigate(`/profile/${uid}`);
+                }
+              }}
             />
             <Typography variant="h6">
               Chat with {connections.find((c) => c._id === selectedConnection)?.displayName}

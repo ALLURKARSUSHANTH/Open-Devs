@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { TextField, Button, Box, Typography, Container, Grid, useMediaQuery } from '@mui/material';
+import { TextField, Button, Box, Typography, Container, Grid, useMediaQuery, Alert } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { loginWithEmailAndPassword, signInWithGoogle, signInWithGithub } from '../firebase/auth';
 import devBg from '../assets/devBg.png';
@@ -22,7 +22,7 @@ const SignIn = () => {
       await loginWithEmailAndPassword(email, password);
       navigate('/');
     } catch (error) {
-      console.error(error.message);
+      alert(error.message);
     } finally {
       setLoading(false);
     }
@@ -33,7 +33,7 @@ const SignIn = () => {
       await signInWithGoogle();
       navigate('/');
     } catch (error) {
-      console.error(error.message);
+      alert(error.message);
     }
   };
 
@@ -42,7 +42,7 @@ const SignIn = () => {
       await signInWithGithub();
       navigate('/');
     } catch (error) {
-      console.error(error.message);
+      alert(error.message);
     }
   };
 
@@ -158,6 +158,12 @@ const SignIn = () => {
 
         <Grid container justifyContent="flex-end" sx={{ mt: 2 }}>
           <Grid item>
+          <Typography variant="body2" color={theme === 'light' ? 'textSecondary' : 'textPrimary'} sx={{padding: 1}}>
+              Forgot password?{' '}
+              <a href="/resetpassword" style={{ textDecoration: 'none', color: theme === 'light' ? '#1976d2' : '#90caf9' }}>
+                ResetPassword
+              </a>
+            </Typography>
             <Typography variant="body2" color={theme === 'light' ? 'textSecondary' : 'textPrimary'}>
               Don't have an account?{' '}
               <a href="/signup" style={{ textDecoration: 'none', color: theme === 'light' ? '#1976d2' : '#90caf9' }}>

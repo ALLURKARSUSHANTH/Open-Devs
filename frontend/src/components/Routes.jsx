@@ -22,12 +22,49 @@ import axios from "axios";
 import Mentoring from "../pages/Mentoring";
 import Chat from "../components/Chat";
 import VideoStream from "./VideoStream";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import PasswordResetPage from "../pages/PasswordResetPage";
 
 function AppRoutes() {
   const [user, setUser] = useState(null);
-
+  const [dailyLoginChecked, setDailyLoginChecked] = useState(false);
   const dispatch = useDispatch();
   const API_URL = import.meta.env.VITE_API_URL;
+
+  // Function to handle daily login bonus
+  const checkDailyLogin = async (userId) => {
+    try {
+      const response = await axios.post(`${API_URL}/users/daily-login`, { 
+        userId 
+      });
+      
+      if (response.data.bonusAwarded) {
+        toast.success(`Daily login bonus awarded! +${response.data.pointsAdded} points`, {
+          position: "top-right",
+          autoClose: 5000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          paddinngBottom: 1000,
+        });
+        
+        // Update user profile in Redux if needed
+        if (response.data.updatedUser) {
+          dispatch(setUserProfile({
+            ...response.data.updatedUser,
+            points: response.data.updatedUser.points,
+            level: response.data.updatedUser.level
+          }));
+        }
+      }
+    } catch (error) {
+      console.error("Error checking daily login:", error);
+    } finally {
+      setDailyLoginChecked(true);
+    }
+  };
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -42,12 +79,18 @@ function AppRoutes() {
         );
 
         try {
-          await axios.post(`${API_URL}/users/firebase`, {
+          // Save/update user in backend
+          const userResponse = await axios.post(`${API_URL}/users/firebase`, {
             _id: firebaseUser.uid,
             displayName: firebaseUser.displayName || "User",
             email: firebaseUser.email,
             photoURL: firebaseUser.photoURL || "",
           });
+
+          // Check for daily login bonus after user is confirmed in backend
+          if (userResponse.data.success) {
+            await checkDailyLogin(firebaseUser.uid);
+          }
         } catch (error) {
           console.error(
             "Failed to save user to backend:",
@@ -55,7 +98,7 @@ function AppRoutes() {
           );
         }
       } else {
-        dispatch(clearUserProfile());
+        setDailyLoginChecked(false);
       }
     });
     return () => unsubscribe();
@@ -66,7 +109,10 @@ function AppRoutes() {
       {user && <NavBar />}
 
       <Routes>
-        <Route path="/" element={user ? <Home /> : <Navigate to="/signin" />} />
+        <Route 
+          path="/" 
+          element={user ? <Home /> : <Navigate to="/signin" />}
+        />
 
         <Route
           path="/profile/:uid"
@@ -76,7 +122,6 @@ function AppRoutes() {
           path="/post"
           element={user ? <Post /> : <Navigate to="/signin" />}
         />
-
         <Route
           path="/mentoring"
           element={user ? <Mentoring /> : <Navigate to="/signin" />}
@@ -87,7 +132,6 @@ function AppRoutes() {
             user ? <VideoStream userId={user.uid} /> : <Navigate to="/signin" />
           }
         />
-
         <Route
           path="/chat"
           element={user ? <Chat /> : <Navigate to="/signin" />}
@@ -99,6 +143,10 @@ function AppRoutes() {
         <Route
           path="/signup"
           element={!user ? <SignUp /> : <Navigate to="/" />}
+        />
+        <Route
+          path="/resetpassword"
+          element={<PasswordResetPage />}
         />
       </Routes>
     </Router>
