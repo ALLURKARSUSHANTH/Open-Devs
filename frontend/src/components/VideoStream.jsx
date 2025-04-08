@@ -3,6 +3,7 @@ import socket from '../context/socket';
 import { Button, IconButton } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import Typography from '@mui/material/Typography';
 
 const VideoStream = ({ userId }) => {
   const [streams, setStreams] = useState([]);
@@ -225,93 +226,53 @@ const VideoStream = ({ userId }) => {
   }, [myStream]);
 
   return (
-    <div style={{ padding: '20px' }}>
-      <IconButton>
-        <ArrowBackIcon onClick={handleBack} />
+    <div style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto' }}>
+      <IconButton onClick={() => navigate('/post')}>
+        <ArrowBackIcon />
       </IconButton>
 
-      <h2>Video Streaming</h2>
+      <Typography variant="h4" gutterBottom>Video Streaming</Typography>
 
-      <div style={{ display: 'flex', gap: '20px', marginBottom: '20px' }}>
-        {myStream && (
-          <div>
-            <h3>Your Stream</h3>
-            <video 
-              ref={myVideoRef} 
-              autoPlay
-              muted
-              playsInline
-              controls
-              onCanPlay={() => {
-                if (myVideoRef.current) {
-                  myVideoRef.current.play().catch(e => console.error('Play failed:', e));
-                }
-              }}
-              style={{ 
-                width: '500px', 
-                height: '400px',
-                border: '3px solid green', 
-              }}            />
-            <p>Viewers: {viewers}</p>
-            <Button 
-              variant="contained" 
-              color="error" 
-              onClick={stopStreaming}
-              style={{ marginTop: '10px' }}
-            >
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+        <div style={{ border: '1px solid #ddd', padding: '10px' }}>
+          <Typography variant="h6">Your Stream</Typography>
+          <video ref={myVideoRef} autoPlay muted playsInline style={{ width: '100%' }} />
+          {myStream ? (
+            <Button onClick={stopStreaming} color="error" fullWidth>
               Stop Streaming
             </Button>
-          </div>
-        )}
+          ) : (
+            <Button onClick={startStreaming} disabled={isLoading} fullWidth>
+              {isLoading ? 'Starting...' : 'Start Streaming'}
+            </Button>
+          )}
+        </div>
 
-        {remoteStream && (
-          <div>
-            <h3>Watching: {remoteStream.userId}</h3>
-            <video 
-              ref={remoteVideoRef} 
-              autoPlay
-              playsInline
-              style={{ 
-                width: '300px',
-                height: '200px',
-                border: '3px solid blue', // Visual debug
-                backgroundColor: 'black' // Shows if element is rendered
-              }}
-            />
-          </div>
-        )}
+        <div style={{ border: '1px solid #ddd', padding: '10px' }}>
+          <Typography variant="h6">Remote Stream</Typography>
+          <video ref={remoteVideoRef} autoPlay playsInline style={{ width: '100%' }} />
+          {remoteStream && (
+            <Button onClick={stopWatching} color="secondary" fullWidth>
+              Stop Watching
+            </Button>
+          )}
+        </div>
       </div>
 
-      {!myStream && (
-        <Button 
-          variant="contained" 
-          onClick={startStreaming}
-          style={{ marginBottom: '20px' }}
-        >
-          Start Streaming
-        </Button>
-      )}
-
-      <h3>Active Streams</h3>
-      {streams.filter(s => s.userId !== userId).length > 0 ? (
-        <ul style={{ listStyle: 'none', padding: 0 }}>
-          {streams.filter(s => s.userId !== userId).map(stream => (
-            <li key={stream.userId} style={{ margin: '10px 0' }}>
-              Stream by {stream.userId}
-              <Button 
-                variant="outlined" 
-                onClick={() => watchStream(stream.userId)}
-                style={{ marginLeft: '10px' }}
-                disabled={!!remoteStream}
-              >
-                Watch
-              </Button>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p>No other active streams at the moment</p>
-      )}
+      <div style={{ marginTop: '30px' }}>
+        <Typography variant="h5">Active Streams</Typography>
+        {streams.filter(s => s.userId !== userId).map(stream => (
+          <div key={stream.userId} style={{ margin: '10px 0' }}>
+            <Typography>Stream by {stream.userId}</Typography>
+            <Button 
+              onClick={() => watchStream(stream.userId)}
+              disabled={!!remoteStream || isLoading}
+            >
+              Watch
+            </Button>
+          </div>
+        ))}
+      </div>
     </div>
   );
 };

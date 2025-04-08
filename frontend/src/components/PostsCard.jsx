@@ -17,17 +17,55 @@ import {
   DialogActions,
   Snackbar,
   Alert,
-  Collapse
+  Collapse,
+  Divider,
+  Chip,
+  useTheme,
+  useMediaQuery
 } from '@mui/material';
 import {
   FavoriteBorderOutlined,
   CommentOutlined,
   Favorite,
   DeleteOutline,
-  MoreVert
+  MoreVert,
+  PersonAdd,
+  Link,
+  ExpandMore,
+  ExpandLess
 } from '@mui/icons-material';
 import MonacoEditor from "@monaco-editor/react";
 import { useNavigate } from 'react-router-dom';
+import { styled } from '@mui/system';
+
+const StyledCard = styled(Card)(({ theme }) => ({
+  borderRadius: 12,
+  boxShadow: theme.shadows[1],
+  transition: 'all 0.3s ease',
+  marginBottom: theme.spacing(2),
+  '&:hover': {
+    boxShadow: theme.shadows[4],
+    transform: 'translateY(-2px)'
+  }
+}));
+
+const PostImage = styled('div')(({ theme }) => ({
+  position: "relative",
+  width: "100%",
+  borderRadius: 8,
+  overflow: "hidden",
+  cursor: "pointer",
+  marginBottom: theme.spacing(2),
+  '& img': {
+    width: "100%",
+    height: "100%",
+    objectFit: "cover",
+    transition: 'transform 0.3s ease'
+  },
+  '&:hover img': {
+    transform: 'scale(1.02)'
+  }
+}));
 
 const PostCard = ({ 
   post, 
@@ -59,6 +97,8 @@ const PostCard = ({
   const [menuAnchor, setMenuAnchor] = useState(null);
   const [isDeleted, setIsDeleted] = useState(false);
 
+  const muiTheme = useTheme();
+  const isMobile = useMediaQuery(muiTheme.breakpoints.down('sm'));
   const isAuthor = post.author?._id === loggedInUserId;
   const navigate = useNavigate();
 
@@ -84,7 +124,6 @@ const PostCard = ({
       setError('Failed to like post');
     }
   };
-
   const handleOptimisticFollow = async (e, userId) => {
     e.stopPropagation();
     const wasFollowing = localState.isFollowing;
@@ -101,7 +140,6 @@ const PostCard = ({
         ...prev,
         isFollowing: wasFollowing
       }));
-      setError('Failed to update follow status');
     }
   };
 
@@ -124,10 +162,9 @@ const PostCard = ({
         ...prev,
         isConnecting: false
       }));
-      setError('Failed to connect');
     }
   };
-
+  
   const handleDeleteClick = (e) => {
     e.stopPropagation();
     setDeleteConfirmOpen(true);
@@ -168,278 +205,296 @@ const PostCard = ({
 
   return (
     <Collapse in={!isDeleted}>
-      <Card
-        sx={{
-          padding: 2,
-          borderRadius: "12px",
-          height: "100%",
-          display: "flex",
-          flexDirection: "column",
-          transition: 'all 0.3s ease',
-          position: 'relative',
-          opacity: isDeleted ? 0 : 1,
-          transform: isDeleted ? 'scale(0.95)' : 'scale(1)',
-          '&:hover': {
-            boxShadow: '0 8px 16px rgba(0,0,0,0.1)',
-            transform: isDeleted ? 'scale(0.95)' : 'translateY(-2px)'
-          }
-        }}
-        onClick={!isExpanded ? onClick : undefined}
-      >
-        {/* Header with author info and actions */}
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-          <Stack 
-            direction="row" 
-            spacing={1} 
-            alignItems="center"
-            onClick={(e) => {
-              e.stopPropagation();
-              const uid = post.author?._id;
-              if (uid) {
-                navigate(`/profile/${uid}`);
-              }
-            }}
-            sx={{ cursor: 'pointer' }}
-          >
-            <Avatar
-              src={post.author?.photoURL}
-              alt={post.author?.displayName?.[0]}
-              sx={{ width: 50, height: 50 }}
-            />
+      <StyledCard onClick={!isExpanded ? onClick : undefined}>
+        <CardContent sx={{ p: isMobile ? 2 : 3 }}>
+          {/* Header with author info and actions */}
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Stack 
+              direction="row" 
+              spacing={1.5} 
+              alignItems="center"
+              onClick={(e) => {
+                e.stopPropagation();
+                const uid = post.author?._id;
+                if (uid) {
+                  navigate(`/profile/${uid}`);
+                }
+              }}
+              sx={{ cursor: 'pointer' }}
+            >
+              <Avatar
+                src={post.author?.photoURL}
+                alt={post.author?.displayName?.[0]}
+                sx={{ width: 40, height: 40 }}
+              />
+              <Box>
+                <Typography variant="subtitle1" fontWeight="bold">
+                  {post.author?.displayName || "Unknown Author"}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {new Date(post.timeStamp).toLocaleDateString()}
+                </Typography>
+              </Box>
+            </Stack>
+
             <Box>
-              <Typography variant="h6" sx={{ fontWeight: "bold" }}>
-                {post.author?.displayName || "Unknown Author"}
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                {new Date(post.createdAt).toLocaleDateString()}
-              </Typography>
+              {!isAuthor && post.author?._id && (
+                <Stack direction="row" spacing={1}>
+                  <Tooltip title={localState.isFollowing ? "Unfollow" : "Follow"}>
+                    <Button
+                      size="small"
+                      variant={localState.isFollowing ? "contained" : "outlined"}
+                      color={localState.isFollowing ? "error" : "primary"}
+                      sx={{ 
+                        borderRadius: 2,
+                        textTransform: 'none',
+                        minWidth: 0,
+                        px: 1.5,
+                        fontSize: '0.75rem'
+                      }}
+                      onClick={(e) => handleOptimisticFollow(e, post.author._id)}
+                      disabled={localState.isConnecting}
+                      startIcon={
+                        localState.isFollowing ? (
+                          <Favorite fontSize="small" />
+                        ) : (
+                          <PersonAdd fontSize="small" />
+                        )
+                      }
+                    >
+                      {isMobile ? '' : localState.isFollowing ? 'Following' : 'Follow'}
+                    </Button>
+                  </Tooltip>
+
+                  {!localState.isConnected && (
+                    <Tooltip title={localState.isConnecting ? "Connecting..." : "Connect"}>
+                      <Button
+                        size="small"
+                        variant="contained"
+                        color="secondary"
+                        sx={{ 
+                          borderRadius: 2,
+                          textTransform: 'none',
+                          minWidth: 0,
+                          px: 1.5,
+                          fontSize: '0.75rem'
+                        }}
+                        onClick={(e) => handleOptimisticConnect(e, post.author._id)}
+                        disabled={localState.isConnecting}
+                        startIcon={
+                          localState.isConnecting ? (
+                            <CircularProgress size={16} />
+                          ) : (
+                            <Link fontSize="small" />
+                          )
+                        }
+                      >
+                        {isMobile ? '' : localState.isConnecting ? '...' : 'Connect'}
+                      </Button>
+                    </Tooltip>
+                  )}
+                </Stack>
+              )}
+
+              {isAuthor && (
+                <IconButton onClick={handleMenuOpen}>
+                  <MoreVert />
+                </IconButton>
+              )}
             </Box>
-          </Stack>
-
-          <Box>
-            {!isAuthor && post.author?._id && (
-              <Stack direction="row" spacing={1}>
-                <Button
-                  color={localState.isFollowing ? "error" : "primary"}
-                  size="small"
-                  sx={{ borderRadius: "8px" }}
-                  onClick={(e) => handleOptimisticFollow(e, post.author._id)}
-                  disabled={localState.isConnecting}
-                >
-                  {localState.isFollowing ? "Unfollow" : "Follow"}
-                </Button>
-                {!localState.isConnected && (
-                  <Button
-                    variant="contained"
-                    color="secondary"
-                    size="small"
-                    sx={{ borderRadius: "8px" }}
-                    onClick={(e) => handleOptimisticConnect(e, post.author._id)}
-                    disabled={localState.isConnecting}
-                    startIcon={localState.isConnecting ? <CircularProgress size={14} /> : null}
-                  >
-                    {localState.isConnecting ? "Connecting..." : "Connect"}
-                  </Button>
-                )}
-              </Stack>
-            )}
-
-            {isAuthor && (
-              <IconButton onClick={handleMenuOpen}>
-                <MoreVert />
-              </IconButton>
-            )}
           </Box>
-        </Box>
 
-        <CardContent sx={{ flexGrow: 1, py: 0 }}>
           {/* Post Content */}
-          <Typography paragraph sx={{ mb: 2 }}>
+          <Typography 
+            variant="body1" 
+            paragraph 
+            sx={{ 
+              mb: 2,
+              whiteSpace: 'pre-line',
+              lineHeight: 1.6,
+              color: 'text.primary'
+            }}
+          >
             {expandedPosts[post._id] || post.content.length <= 100
               ? post.content
               : `${post.content.substring(0, 100)}...`}
             {post.content.length > 100 && (
               <Button
                 size="small"
-                onClick={() => {
+                onClick={(e) => {
+                  e.stopPropagation();
                   toggleExpand(post._id);
                 }}
-                sx={{ color: 'primary.main', ml: 1 }}
+                sx={{ 
+                  ml: 1,
+                  color: 'primary.main',
+                  textTransform: 'none',
+                  minWidth: 0,
+                  fontWeight: 'bold'
+                }}
+                endIcon={expandedPosts[post._id] ? <ExpandLess /> : <ExpandMore />}
               >
-                {expandedPosts[post._id] ? "See Less" : "See More"}
+                {expandedPosts[post._id] ? "Show less" : "Show more"}
               </Button>
             )}
           </Typography>
+
           {/* Images */}
           {post.imgUrls?.length > 0 && (
-            <Box
-              sx={{
-                position: "relative",
-                width: "100%",
-                height: isExpanded ? "400px" : "200px",
-                borderRadius: "8px",
-                overflow: "hidden",
-                cursor: "pointer",
-                mb: 2,
-                transition: 'height 0.3s ease'
-              }}
+            <PostImage
               onClick={(e) => {
                 e.stopPropagation();
                 openModal(post.imgUrls);
               }}
+              sx={{ height: isExpanded ? (isMobile ? 200 : 400) : (isMobile ? 150 : 250) }}
             >
               <img
                 src={post.imgUrls[0]}
                 alt="Post"
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "cover",
-                  transition: 'transform 0.3s ease'
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
-                onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
               />
               {post.imgUrls.length > 1 && (
-                <Box
+                <Chip
+                  label={`+${post.imgUrls.length - 1}`}
+                  size="small"
                   sx={{
                     position: "absolute",
-                    top: 0,
-                    right: 0,
-                    background: "rgba(0,0,0,0.5)",
-                    color: "#fff",
-                    padding: "4px 8px",
-                    borderRadius: "0 0 0 8px",
+                    top: 8,
+                    right: 8,
+                    backgroundColor: 'rgba(0,0,0,0.7)',
+                    color: "#fff"
                   }}
-                >
-                  +{post.imgUrls.length - 1}
-                </Box>
+                />
               )}
-            </Box>
+            </PostImage>
           )}
 
           {/* Code Snippet */}
           {post.codeSnippet && (
             <Box sx={{ mb: 2 }}>
-              <Typography variant="subtitle1" sx={{ fontWeight: "bold", mb: 1 }}>
-                Code Snippet:
+              <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 1 }}>
+                Code Snippet
               </Typography>
               {editorLoaded || isExpanded ? (
-                <MonacoEditor
-                  height={isExpanded ? "300px" : "200px"}
-                  language={post.codeLanguage || "javascript"}
-                  theme={theme === "dark" ? "vs-dark" : "light"}
-                  value={post.codeSnippet}
-                  options={{
-                    readOnly: true,
-                    minimap: { enabled: false },
-                    scrollBeyondLastLine: false,
-                  }}
-                  loading={<CircularProgress />}
-                />
+                <Box sx={{ 
+                  border: `1px solid ${muiTheme.palette.divider}`,
+                  borderRadius: 1,
+                  overflow: 'hidden'
+                }}>
+                  <MonacoEditor
+                    height={isExpanded ? (isMobile ? 200 : 300) : (isMobile ? 120 : 200)}
+                    language={post.codeLanguage || "javascript"}
+                    theme={theme === "dark" ? "vs-dark" : "light"}
+                    value={post.codeSnippet}
+                    options={{
+                      readOnly: true,
+                      minimap: { enabled: false },
+                      scrollBeyondLastLine: false,
+                      fontSize: isMobile ? 12 : 14,
+                      lineNumbers: 'off'
+                    }}
+                    loading={<CircularProgress size={24} />}
+                  />
+                </Box>
               ) : (
                 <Box
                   sx={{
-                    height: "200px",
+                    height: isMobile ? 80 : 100,
                     bgcolor: "background.paper",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
                     borderRadius: 1,
                     cursor: 'pointer',
+                    border: `1px dashed ${muiTheme.palette.divider}`,
                     '&:hover': {
                       bgcolor: 'action.hover'
                     }
                   }}
-                  onMouseEnter={() => setEditorLoaded(true)}
+                  onClick={() => setEditorLoaded(true)}
                 >
-                  <Typography color="text.secondary">Click to view code</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Click to view code
+                  </Typography>
                 </Box>
               )}
             </Box>
           )}
+
+          {/* Actions */}
+          {showActions && (
+            <>
+              <Divider sx={{ my: 2 }} />
+              <Box sx={{ display: "flex", gap: 1, justifyContent: 'space-between' }}>
+                <Box sx={{ display: "flex", gap: 1 }}>
+                  <Tooltip title={localState.isLiked ? "Unlike" : "Like"}>
+                    <Button
+                      startIcon={
+                        localState.isLiked ? (
+                          <Favorite sx={{ color: muiTheme.palette.error.main }} />
+                        ) : (
+                          <FavoriteBorderOutlined />
+                        )
+                      }
+                      onClick={(e) => handleOptimisticLike(e, post._id)}
+                      sx={{
+                        borderRadius: 2,
+                        textTransform: 'none',
+                        color: 'text.secondary',
+                        '&:hover': {
+                          bgcolor: 'action.hover'
+                        }
+                      }}
+                    >
+                      {localState.likeCount} {isMobile ? '' : 'Likes'}
+                    </Button>
+                  </Tooltip>
+
+                  <Tooltip title="Add comment">
+                    <Button
+                      startIcon={<CommentOutlined />}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleCommentInput(post._id);
+                      }}
+                      sx={{
+                        borderRadius: 2,
+                        textTransform: 'none',
+                        color: 'text.secondary',
+                        '&:hover': {
+                          bgcolor: 'action.hover'
+                        }
+                      }}
+                    >
+                      {post.comments?.length || 0} {isMobile ? '' : 'Comments'}
+                    </Button>
+                  </Tooltip>
+                </Box>
+
+                {/* DELETE Button (only shown to author) */}
+                {isAuthor && (
+                  <Tooltip title="Delete">
+                    <IconButton
+                      onClick={handleDeleteClick}
+                      sx={{
+                        color: 'error.main',
+                        '&:hover': {
+                          backgroundColor: 'rgba(244, 67, 54, 0.08)'
+                        }
+                      }}
+                      disabled={isDeleting}
+                    >
+                      {isDeleting ? (
+                        <CircularProgress size={24} thickness={4} color="error" />
+                      ) : (
+                        <DeleteOutline />
+                      )}
+                    </IconButton>
+                  </Tooltip>
+                )}
+              </Box>
+            </>
+          )}
         </CardContent>
-
-        {/* Actions */}
-        {showActions && (
-          <Box sx={{
-            display: "flex",
-            gap: 1,
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            mt: 'auto',
-            pt: 1
-          }}>
-            <Box sx={{ display: "flex", gap: 1 }}>
-              <Tooltip title="Like">
-                <IconButton
-                  onClick={(e) => handleOptimisticLike(e, post._id)}
-                  sx={{
-                    transition: 'transform 0.2s',
-                    '&:hover': {
-                      transform: 'scale(1.1)',
-                      color: 'error.main'
-                    }
-                  }}
-                >
-                  {localState.isLiked ? (
-                    <Favorite sx={{ color: "error.main" }} />
-                  ) : (
-                    <FavoriteBorderOutlined />
-                  )}
-                  <Typography sx={{ ml: 0.5 }}>
-                    {localState.likeCount}
-                  </Typography>
-                </IconButton>
-              </Tooltip>
-
-              <Tooltip title="Comment">
-                <IconButton
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toggleCommentInput(post._id);
-                  }}
-                  sx={{
-                    transition: 'transform 0.2s',
-                    '&:hover': {
-                      transform: 'scale(1.1)',
-                      color: 'primary.main'
-                    }
-                  }}
-                >
-                  <CommentOutlined />
-                  <Typography sx={{ ml: 0.5 }}>
-                    {post.comments?.length || 0}
-                  </Typography>
-                </IconButton>
-              </Tooltip>
-            </Box>
-
-            {/* DELETE Button (only shown to author) */}
-            {isAuthor && (
-              <Tooltip title="Delete">
-                <IconButton
-                  onClick={handleDeleteClick}
-                  sx={{
-                    transition: 'all 0.2s ease-out',
-                    color: 'error.main',
-                    '&:hover': {
-                      backgroundColor: 'rgba(244, 67, 54, 0.08)',
-                      transform: 'translateY(-1px)'
-                    }
-                  }}
-                  disabled={isDeleting}
-                >
-                  {isDeleting ? (
-                    <CircularProgress size={24} thickness={4} color="error" />
-                  ) : (
-                    <DeleteOutline />
-                  )}
-                </IconButton>
-              </Tooltip>
-            )}
-          </Box>
-        )}
 
         {/* Delete Confirmation Dialog */}
         <Dialog
@@ -503,7 +558,7 @@ const PostCard = ({
             {error}
           </Alert>
         </Snackbar>
-      </Card>
+      </StyledCard>
     </Collapse>
   );
 };

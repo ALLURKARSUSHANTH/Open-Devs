@@ -18,6 +18,11 @@ import {
   IconButton,
   Chip,
   Stack,
+  Divider,
+  Paper,
+  Tooltip,
+  Fade,
+  Badge,
   Snackbar,
   Alert,
   Collapse
@@ -28,9 +33,13 @@ import {
   Favorite as FollowersIcon,
   PhotoLibrary as PostsIcon,
   Close as CloseIcon,
+  Edit,
+  Save,
+  Logout,
+  Add
 } from "@mui/icons-material";
 import { Swiper, SwiperSlide } from "swiper/react";
-import { Navigation, Pagination } from "swiper/modules";
+import { Navigation, Pagination } from "swiper/modules";                    
 import "swiper/css";
 import "swiper/css/navigation";
 import "swiper/css/pagination";
@@ -40,10 +49,70 @@ import PostCard from "../components/PostsCard";
 import CommentsSection from "../components/Comments";
 import { fetchComments } from "../services/posts";
 import usePostActions from "../components/postActions";
+import { styled, useTheme } from '@mui/system';
+
+const StyledCard = styled(Card)(({ theme }) => ({
+  borderRadius: 16,
+  boxShadow: theme.shadows[4],
+  transition: 'transform 0.3s, box-shadow 0.3s',
+  '&:hover': {
+    transform: 'translateY(-4px)',
+    boxShadow: theme.shadows[8]
+  }
+}));
+
+const ProfileHeader = styled('div')(({ theme }) => ({
+  height: 180,
+  background: theme.palette.mode === 'dark' 
+    ? 'linear-gradient(135deg, #2c3e50, #4ca1af)'
+    : 'linear-gradient(135deg, #6a11cb, #2575fc)',
+  borderTopLeftRadius: 16,
+  borderTopRightRadius: 16,
+  position: 'relative'
+}));
+
+const ProfileAvatar = styled(Avatar)(({ theme }) => ({
+  width: 120,
+  height: 120,
+  marginTop: -60,
+  border: `4px solid ${theme.palette.background.paper}`,
+  boxShadow: theme.shadows[3],
+  cursor: 'pointer',
+  transition: 'transform 0.3s',
+  '&:hover': {
+    transform: 'scale(1.05)'
+  }
+}));
+
+const StatItem = styled(Box)(({ theme }) => ({
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  padding: theme.spacing(1),
+  cursor: 'pointer',
+  transition: 'all 0.2s',
+  borderRadius: 8,
+  '&:hover': {
+    backgroundColor: theme.palette.action.hover,
+    transform: 'translateY(-2px)'
+  }
+}));
+
+const SkillChip = styled(Chip)(({ theme }) => ({
+  borderRadius: 8,
+  margin: theme.spacing(0.5),
+  '& .MuiChip-deleteIcon': {
+    color: theme.palette.text.secondary,
+    '&:hover': {
+      color: theme.palette.error.main
+    }
+  }
+}));
 
 const Profile = () => {
   const { uid } = useParams();
-  const isMobile = useMediaQuery((theme) => theme.breakpoints.down("sm"));
+  const mytheme = useTheme();
+  const isMobile = useMediaQuery((mytheme.breakpoints.down("sm")));
   const [profilePicModalOpen, setProfilePicModalOpen] = useState(false);
   const {
     theme,
@@ -85,46 +154,43 @@ const Profile = () => {
   });
   const API_URL = import.meta.env.VITE_API_URL;
 
-  // State for editable fields
   const [isEditing, setIsEditing] = useState(false);
   const [profileData, setProfileData] = useState({
     displayName: profile?.displayName || "User",
     email: profile?.email || "No email available",
     photoURL: profile?.photoURL || "",
     level: profile?.level || "Beginner",
-    points: profile?.points || 0,
-    skills: profile?.skills || []
+    points: profile?.points || 0
   });
   const [followers, setFollowers] = useState([]);
   const [connections, setConnections] = useState([]);
   const [posts, setPosts] = useState([]);
   const [selectedPost, setSelectedPost] = useState(null);
-  const [deleteError, setDeleteError] = useState(null);
-  const [deletingPostId, setDeletingPostId] = useState(null);
-
-  // For post expansion and comments
   const [postComments, setPostComments] = useState({});
-
   const [followersModalOpen, setFollowersModalOpen] = useState(false);
   const [connectionsModalOpen, setConnectionsModalOpen] = useState(false);
+  const [skills, setSkills] = useState(profile?.skills || []);
   const [newSkill, setNewSkill] = useState('');
   const [skillSuggestions, setSkillSuggestions] = useState([]);
+  const [deleteError, setDeleteError] = useState(null);
+  const [deletingPostId, setDeletingPostId] = useState(null);
   const currentUser = uid === loggedInUserId;
 
   useEffect(() => {
-    const fetchProfileData = async () => {
+    const fetchCounts = async () => {
       if (!uid) return;
       try {
         setLoading(true);
         const profileRes = await axios.get(`${API_URL}/users/firebase/${uid}`);
-        setProfileData({
+        setProfileData((prev) => ({
+          ...prev,
           displayName: profileRes.data.displayName,
           email: profileRes.data.email,
           photoURL: profileRes.data.photoURL,
           level: profileRes.data.level,
           points: profileRes.data.points,
-          skills: profileRes.data.skills || []
-        });
+        }));
+        setSkills(profileRes.data.skills || []);
 
         const [followersRes, postsRes, connectionsRes] = await Promise.all([
           axios.get(`${API_URL}/follow/${uid}/followers-count`),
@@ -142,7 +208,6 @@ const Profile = () => {
           connections: connectionsRes.data.connections?.length || 0,
         });
 
-        // Load comments for each post
         const comments = {};
         for (const post of postsRes.data.posts || []) {
           const postComments = await fetchComments(post._id);
@@ -150,7 +215,7 @@ const Profile = () => {
         }
         setPostComments(comments);
       } catch (err) {
-        console.error("Error fetching profile data:", err);
+        console.error("Error fetching counts:", err);
         setError(
           err.response?.data?.message ||
           "An error occurred while fetching data.",
@@ -160,8 +225,8 @@ const Profile = () => {
       }
     };
 
-    fetchProfileData();
-  }, [uid, API_URL]);
+    fetchCounts();
+  }, [uid]);
 
   const handleDeletePost = async (postId) => {
     try {
@@ -175,7 +240,7 @@ const Profile = () => {
       }
 
       await axios.delete(`${API_URL}/posts/deletePost/${postId}`);
-      setSelectedPost(null)
+      setSelectedPost(null);
       
       setCounts(prev => ({
         ...prev,
@@ -207,13 +272,19 @@ const Profile = () => {
   };
 
   const handleRemoveFollower = useCallback((followerId) => {
-    setFollowers((prev) => prev.filter(f => f._id !== followerId));
-    setCounts(prev => ({ ...prev, followers: prev.followers - 1 }));
+    setFollowers((prevFollowers) =>
+      prevFollowers.filter((follower) => follower._id !== followerId),
+    );
+    setCounts((prevCounts) => ({
+      ...prevCounts,
+      followers: prevCounts.followers - 1,
+    }));
   }, []);
 
   const handleRemoveConnection = useCallback((connectionId) => {
-    setConnections((prev) => prev.filter(c => c._id !== connectionId));
-    setCounts(prev => ({ ...prev, connections: prev.connections - 1 }));
+    setConnections((prevConnections) =>
+      prevConnections.filter((connection) => connection._id !== connectionId),
+    );
   }, []);
 
   const handleSave = async () => {
@@ -221,8 +292,12 @@ const Profile = () => {
       await axios.put(`${API_URL}/users/update/${uid}`, {
         displayName: profileData.displayName,
         photoURL: profileData.photoURL,
-        skills: profileData.skills
       });
+      if (skills.length > 0) {
+        await axios.patch(`${API_URL}/users/skills/${uid}`, {
+          skills: skills,
+        });
+      }
       setIsEditing(false);
     } catch (error) {
       console.error("Error updating profile:", error);
@@ -233,53 +308,42 @@ const Profile = () => {
   const handlePhotoUpload = async (event) => {
     const file = event.target.files[0];
     if (file) {
-      try {
-        const formData = new FormData();
-        formData.append('image', file);
-        
-        const response = await axios.post(`${API_URL}/upload`, formData, {
-          headers: {
-            'Content-Type': 'multipart/form-data'
-          }
-        });
-        
-        setProfileData(prev => ({ ...prev, photoURL: response.data.url }));
-      } catch (error) {
-        console.error("Error uploading photo:", error);
-        setError("Failed to upload photo");
-      }
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const newPhotoURL = reader.result;
+        setProfileData((prev) => ({ ...prev, photoURL: newPhotoURL }));
+      };
+      reader.readAsDataURL(file);
     }
   };
 
   const handleSkillInputChange = (e) => {
     const value = e.target.value;
     setNewSkill(value);
-    setSkillSuggestions(
-      value.length > 0 
-        ? skillsList.filter(skill =>
-            skill.toLowerCase().includes(value.toLowerCase())
-          ).slice(0, 10)
-        : []
-    );
+
+    if (value.length > 0) {
+      const matches = skillsList.filter(skill =>
+        skill.toLowerCase().includes(value.toLowerCase())
+      );
+      setSkillSuggestions(matches);
+    } else {
+      setSkillSuggestions([]);
+    }
   };
 
-  const handleAddSkill = (skill = null) => {
+  const handleAddSkill = async (skill = null) => {
     const skillToAdd = skill || newSkill.trim();
-    if (skillToAdd && !profileData.skills.includes(skillToAdd)) {
-      setProfileData(prev => ({
-        ...prev,
-        skills: [...prev.skills, skillToAdd]
-      }));
+    if (skillToAdd && !skills.includes(skillToAdd)) {
+      const updatedSkills = [...skills, skillToAdd];
+      setSkills(updatedSkills);
       setNewSkill('');
       setSkillSuggestions([]);
     }
   };
 
-  const handleRemoveSkill = (skillToRemove) => {
-    setProfileData(prev => ({
-      ...prev,
-      skills: prev.skills.filter(skill => skill !== skillToRemove)
-    }));
+  const handleRemoveSkill = async (skillToRemove) => {
+    const updatedSkills = skills.filter(skill => skill !== skillToRemove);
+    setSkills(updatedSkills);
   };
 
   const handleKeyPress = (e) => {
@@ -293,46 +357,99 @@ const Profile = () => {
   const handleOpenConnectionsModal = () => setConnectionsModalOpen(true);
   const handleCloseConnectionsModal = () => setConnectionsModalOpen(false);
 
+  useEffect(() => {
+    const loadComments = async () => {
+      const comments = {};
+      for (const post of posts) {
+        const postComments = await fetchComments(post._id);
+        comments[post._id] = postComments;
+      }
+      setPostComments(comments);
+    };
+
+    if (posts.length > 0) {
+      loadComments();
+    }
+  }, [posts]);
+
+  if (loading) {
+    return (
+      <Box sx={{ 
+        display: "flex", 
+        justifyContent: "center", 
+        alignItems: "center", 
+        height: "100vh" 
+      }}>
+        <CircularProgress size={60} thickness={4} />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box sx={{ 
+        display: "flex", 
+        justifyContent: "center", 
+        alignItems: "center", 
+        height: "100vh",
+        p: 3
+      }}>
+        <Alert severity="error" sx={{ borderRadius: 2 }}>
+          {error}
+        </Alert>
+      </Box>
+    );
+  }
+
   const ProfilePicModal = () => (
     <Modal open={profilePicModalOpen} onClose={() => setProfilePicModalOpen(false)}>
-      <Box sx={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: "rgba(0,0,0,0.9)",
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        p: 2,
-      }}>
+      <Box
+        sx={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: "rgba(0,0,0,0.95)",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          p: 2,
+        }}
+      >
         <IconButton
           onClick={() => setProfilePicModalOpen(false)}
-          sx={{ 
-            position: "absolute", 
-            top: 16, 
-            right: 16, 
+          sx={{
+            position: "absolute",
+            top: 24,
+            right: 24,
             color: "white",
-            zIndex: 1
+            zIndex: 1,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            '&:hover': {
+              backgroundColor: 'rgba(255,255,255,0.2)'
+            }
           }}
         >
           <CloseIcon fontSize="large" />
         </IconButton>
-        <Box sx={{
-          maxWidth: '90vw',
-          maxHeight: '90vh',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center'
-        }}>
+        <Box
+          sx={{
+            maxWidth: '90vw',
+            maxHeight: '90vh',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center'
+          }}
+        >
           <img
             src={profileData.photoURL}
             alt={`${profileData.displayName}'s profile`}
             style={{
               maxWidth: '100%',
               maxHeight: '100%',
-              objectFit: 'contain'
+              objectFit: 'contain',
+              borderRadius: 8
             }}
           />
         </Box>
@@ -340,172 +457,178 @@ const Profile = () => {
     </Modal>
   );
 
-  if (loading) {
-    return (
-      <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
-        <CircularProgress />
-      </Box>
-    );
-  }
-
-  if (error) {
-    return (
-      <Box sx={{ p: 2, textAlign: "center" }}>
-        <Alert severity="error">{error}</Alert>
-      </Box>
-    );
-  }
-
   return (
-    <Box sx={{ width: "100%", padding: 0 }}>
-      <Grid container justifyContent="center" spacing={2} sx={{ padding: 0 }}>
-        <Grid item xs={12} sm={8} md={6}>
-          <Card sx={{ borderRadius: 4, boxShadow: 6 }}>
-            <div style={{
-              height: "150px",
-              background: "linear-gradient(135deg, #6a11cb, #2575fc)",
-              borderTopLeftRadius: "16px",
-              borderTopRightRadius: "16px",
-            }} />
-
+    <Box sx={{ width: "100%", padding: isMobile ? 0 : 2 }}>
+      <Grid container justifyContent="center" sx={{ mb: 4 }}>
+        <Grid item xs={12} sm={10} md={8} lg={6}>
+          <StyledCard>
+            <ProfileHeader />
             <CardContent>
               <Grid container direction="column" alignItems="center" spacing={2}>
-                <Avatar
-                  src={profileData.photoURL}
-                  alt={profileData.displayName}
-                  onClick={() => profileData.photoURL && setProfilePicModalOpen(true)}
-                  sx={{
-                    width: 120,
-                    height: 120,
-                    marginTop: "-60px",
-                    border: "4px solid white",
-                    boxShadow: 3,
-                    cursor: profileData.photoURL ? 'pointer' : 'default',
-                    '&:hover': {
-                      opacity: profileData.photoURL ? 0.9 : 1
-                    }
-                  }}
+                <Badge
+                  overlap="circular"
+                  anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                  badgeContent={
+                    currentUser && isEditing && (
+                      <label htmlFor="avatar-upload">
+                        <IconButton
+                          component="span"
+                          size="small"
+                          sx={{
+                            backgroundColor: mytheme.palette.primary.main,
+                            color: 'white',
+                            '&:hover': {
+                              backgroundColor: mytheme.palette.primary.dark
+                            }
+                          }}
+                        >
+                          <Edit fontSize="small" />
+                        </IconButton>
+                      </label>
+                    )
+                  }
+                >
+                  <ProfileAvatar
+                    src={profileData.photoURL}
+                    alt={profileData.displayName}
+                    onClick={() => profileData.photoURL && setProfilePicModalOpen(true)}
+                  />
+                </Badge>
+
+                <input
+                  accept="image/*"
+                  style={{ display: "none" }}
+                  id="avatar-upload"
+                  type="file"
+                  onChange={handlePhotoUpload}
                 />
 
                 {isEditing ? (
-                  <Grid container direction="column" spacing={2} sx={{ width: "100%", mt: 2, pl: 2 }}>
-                    <Grid item>
+                  <Grid container spacing={3} sx={{ mt: 1, px: 2 }}>
+                    <Grid item xs={12}>
                       <TextField
+                        fullWidth
                         label="Full Name"
                         value={profileData.displayName}
                         onChange={(e) => setProfileData(prev => ({ ...prev, displayName: e.target.value }))}
-                        fullWidth
-                        margin="normal"
+                        variant="outlined"
+                        size="small"
                       />
                     </Grid>
-                    
-                    <Grid item>
+
+                    <Grid item xs={12}>
                       <TextField
+                        fullWidth
                         label="Email"
                         value={profileData.email}
                         disabled
-                        fullWidth
-                        margin="normal"
+                        variant="outlined"
+                        size="small"
                       />
                     </Grid>
 
-                    <Grid item>
-                      <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 'bold' }}>
+                    <Grid item xs={12}>
+                      <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
                         Skills
                       </Typography>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                      <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
                         <TextField
+                          fullWidth
+                          size="small"
                           value={newSkill}
                           onChange={handleSkillInputChange}
                           onKeyPress={handleKeyPress}
-                          placeholder="Type to search skills"
-                          size="small"
-                          sx={{ flexGrow: 1 }}
-                          fullWidth
+                          placeholder="Add a skill"
+                          variant="outlined"
                         />
+                        <Button
+                          variant="contained"
+                          onClick={() => handleAddSkill()}
+                          startIcon={<Add />}
+                          disabled={!newSkill.trim()}
+                          sx={{
+                            minWidth: 'auto'
+                          }}
+                        >
+                          Add
+                        </Button>
                       </Box>
 
                       {skillSuggestions.length > 0 && (
-                        <Box sx={{ mb: 2 }}>
-                          <Typography variant="body2" sx={{ mb: 1 }}>
-                            Suggested Skills
+                        <Paper sx={{ p: 2, mb: 2, borderRadius: 2 }}>
+                          <Typography variant="body2" color="text.secondary" gutterBottom>
+                            Suggestions:
                           </Typography>
-                          <Grid container spacing={1}>
-                            {skillSuggestions.map((skill, index) => (
-                              <Grid item key={index}>
-                                <Button
-                                  variant="outlined"
-                                  onClick={() => handleAddSkill(skill)}
-                                  sx={{
-                                    textTransform: 'none',
-                                    borderRadius: '20px',
-                                    padding: '4px 12px',
-                                    fontSize: '0.875rem',
-                                    margin: '2px'
-                                  }}
-                                >
-                                  + {skill}
-                                </Button>
-                              </Grid>
+                          <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
+                            {skillSuggestions.slice(0, 5).map((skill) => (
+                              <Chip
+                                key={skill}
+                                label={skill}
+                                onClick={() => handleAddSkill(skill)}
+                                icon={<Add fontSize="small" />}
+                                size="small"
+                                variant="outlined"
+                                sx={{
+                                  cursor: 'pointer',
+                                  '&:hover': {
+                                    backgroundColor: mytheme.palette.action.hover
+                                  }
+                                }}
+                              />
                             ))}
-                          </Grid>
-                        </Box>
+                          </Stack>
+                        </Paper>
                       )}
 
-                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
-                        {profileData.skills.map((skill, index) => (
-                          <Chip
-                            key={index}
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                        {skills.map((skill) => (
+                          <SkillChip
+                            key={skill}
                             label={skill}
                             onDelete={() => handleRemoveSkill(skill)}
+                            color="primary"
+                            size="small"
                           />
                         ))}
                       </Box>
                     </Grid>
-
-                    <Grid item>
-                      <input
-                        accept="image/*"
-                        style={{ display: "none" }}
-                        id="avatar-upload"
-                        type="file"
-                        onChange={handlePhotoUpload}
-                      />
-                      <label htmlFor="avatar-upload">
-                        <Button
-                          variant="contained"
-                          component="span"
-                          sx={{
-                            backgroundColor: "#007bff",
-                            color: "white",
-                            textTransform: "none",
-                            borderRadius: "20px",
-                          }}
-                        >
-                          Change Profile Photo
-                        </Button>
-                      </label>
-                    </Grid>
                   </Grid>
                 ) : (
                   <>
-                    <Typography variant="h4" sx={{ mt: 2, fontWeight: "bold" }}>
+                    <Typography variant="h4" fontWeight="bold" textAlign="center" gutterBottom>
                       {profileData.displayName}
                     </Typography>
-                    <Typography variant="body1" color="text.secondary">
-                      {profileData.email}
-                    </Typography>
-                    <Typography variant="body1" color="text.secondary">
-                      Level: {profileData.level} | Points: {profileData.points}
-                    </Typography>
-                    {profileData.skills.length > 0 && (
-                      <Box sx={{ mt: 2 }}>
-                        <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
-                          Skills:
+                    
+                    <Box sx={{ textAlign: 'center', mb: 2 }}>
+                      <Chip
+                        label={profileData.level}
+                        color="secondary"
+                        size="small"
+                        sx={{ mr: 1 }}
+                      />
+                      <Chip
+                        label={`${profileData.points} points`}
+                        color="info"
+                        size="small"
+                      />
+                    </Box>
+
+                    {skills.length > 0 && (
+                      <Box sx={{ mb: 2, textAlign: 'center' }}>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>
+                          SKILLS
                         </Typography>
-                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
-                          {profileData.skills.map((skill, index) => (
-                            <Chip key={index} label={skill} />
+                        <Box display="flex" flexWrap="wrap" gap={1} justifyContent="center">
+                          {skills.map((skill) => (
+                            <Chip
+                              key={skill}
+                              label={skill}
+                              size="small"
+                              color='primary'
+                              sx={{
+                                borderRadius: '8px'
+                              }}
+                            />
                           ))}
                         </Box>
                       </Box>
@@ -513,57 +636,39 @@ const Profile = () => {
                   </>
                 )}
 
-                <Grid container justifyContent="space-around" sx={{ mt: 3 }}>
+                <Grid container justifyContent="center" spacing={3} sx={{ mt: 1 }}>
                   <Grid item>
-                    <Typography
-                      variant="h6"
-                      align="center"
-                      onClick={handleOpenConnectionsModal}
-                      sx={{ cursor: "pointer" }}
-                    >
-                      {connections.length}
-                    </Typography>
-                    <Typography
-                      variant="body2"
-                      color="text.secondary"
-                      sx={{ display: "flex", alignItems: "center", cursor: "pointer" }}
-                      onClick={handleOpenConnectionsModal}
-                    >
-                      <ConnectionsIcon sx={{ mr: 1, color: "#6a11cb" }} />
-                      Connections
-                    </Typography>
+                    <StatItem onClick={handleOpenConnectionsModal}>
+                      <Typography variant="h6" fontWeight="bold">
+                        {connections.length}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        <ConnectionsIcon sx={{ mr: 0.5, fontSize: 16, color: mytheme.palette.primary.main }} />
+                        Connections
+                      </Typography>
+                    </StatItem>
                   </Grid>
                   <Grid item>
-                    <Typography
-                      variant="h6"
-                      align="center"
-                      onClick={handleOpenFollowersModal}
-                      sx={{ cursor: "pointer" }}
-                    >
-                      {followers.length}
-                    </Typography>
-                    <Typography
-                      variant="body2"
-                      color="text.secondary"
-                      sx={{ display: "flex", alignItems: "center", cursor: "pointer" }}
-                      onClick={handleOpenFollowersModal}
-                    >
-                      <FollowersIcon sx={{ mr: 1, color: "#ff4081" }} />
-                      Followers
-                    </Typography>
+                    <StatItem onClick={handleOpenFollowersModal}>
+                      <Typography variant="h6" fontWeight="bold">
+                        {followers.length}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        <FollowersIcon sx={{ mr: 0.5, fontSize: 16, color: mytheme.palette.error.main }} />
+                        Followers
+                      </Typography>
+                    </StatItem>
                   </Grid>
                   <Grid item>
-                    <Typography variant="h6" align="center">
-                      {posts.length}
-                    </Typography>
-                    <Typography
-                      variant="body2"
-                      color="text.secondary"
-                      sx={{ display: "flex", alignItems: "center" }}
-                    >
-                      <PostsIcon sx={{ mr: 1, color: "#4caf50" }} />
-                      Posts
-                    </Typography>
+                    <StatItem>
+                      <Typography variant="h6" fontWeight="bold">
+                        {posts.length}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        <PostsIcon sx={{ mr: 0.5, fontSize: 16, color: mytheme.palette.success.main }} />
+                        Posts
+                      </Typography>
+                    </StatItem>
                   </Grid>
                 </Grid>
 
@@ -585,23 +690,49 @@ const Profile = () => {
                 />
 
                 {currentUser && (
-                  <Grid container justifyContent="center" spacing={2} sx={{ mt: 3 }}>
+                  <Grid container justifyContent="center" spacing={2} sx={{ mt: 2 }}>
                     <Grid item>
-                      <Button
-                        onClick={isEditing ? handleSave : () => setIsEditing(true)}
-                        color="primary"
-                        variant={isEditing ? "contained" : "outlined"}
-                        sx={{ borderRadius: 20 }}
-                      >
-                        {isEditing ? "Save Profile" : "Edit Profile"}
-                      </Button>
+                      {isEditing ? (
+                        <Button
+                          variant="contained"
+                          color="primary"
+                          onClick={handleSave}
+                          startIcon={<Save />}
+                          sx={{
+                            borderRadius: '12px',
+                            px: 3,
+                            fontWeight: 600
+                          }}
+                        >
+                          Save Profile
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="outlined"
+                          color="primary"
+                          onClick={() => setIsEditing(true)}
+                          startIcon={<Edit />}
+                          sx={{
+                            borderRadius: '12px',
+                            px: 3,
+                            fontWeight: 600
+                          }}
+                        >
+                          Edit Profile
+                        </Button>
+                      )}
                     </Grid>
                     <Grid item>
                       <Button
+                        variant="outlined"
+                        color="error"
                         onClick={handleLogout}
-                        color="secondary"
-                        variant="contained"
-                        sx={{ borderRadius: 20 }}
+                        startIcon={<Logout />}
+                        sx={{
+                          borderRadius: '12px',
+                          px: 3,
+                          fontWeight: 600
+                        }}
                       >
                         Logout
                       </Button>
@@ -610,11 +741,12 @@ const Profile = () => {
                 )}
               </Grid>
             </CardContent>
-          </Card>
+          </StyledCard>
         </Grid>
       </Grid>
 
-      {/* Posts Section */}
+      {/* Posts section */}
+        {/* Posts Section */}
       <Box sx={{ p: 2, paddingBottom: "95px" }}>
         {posts.length === 0 ? (
           <Box sx={{ p: 2, textAlign: "center" }}>
@@ -671,6 +803,7 @@ const Profile = () => {
                     post={selectedPost}
                     loggedInUserId={loggedInUserId}
                     onClick={() => setSelectedPost(null)}
+                    toggleCommentInput={toggleCommentInput}
                     toggleExpand={toggleExpand}
                     expandedPosts={expandedPosts}
                     handleConnectToggle={handleConnectToggle}
@@ -748,30 +881,46 @@ const Profile = () => {
         )}
       </Box>
 
-      {/* Image Modal */}
+      {/* Image modal */}
       <Modal open={isModalOpen} onClose={closeModal}>
-        <Box sx={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: "rgba(0,0,0,0.8)",
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-        }}>
+        <Box
+          sx={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0,0,0,0.9)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 1300
+          }}
+        >
           <IconButton
             onClick={closeModal}
-            sx={{ position: "absolute", top: 16, right: 16, color: "white" }}
+            sx={{ 
+              position: "absolute", 
+              top: 24, 
+              right: 24, 
+              color: "white",
+              backgroundColor: 'rgba(0,0,0,0.5)',
+              '&:hover': {
+                backgroundColor: 'rgba(255,255,255,0.2)'
+              }
+            }}
           >
-            <CloseIcon />
+            <CloseIcon fontSize="large" />
           </IconButton>
           <Swiper
             modules={[Navigation, Pagination]}
             navigation
             pagination={{ clickable: true }}
-            style={{ width: "80%", height: "80%" }}
+            style={{ 
+              width: "90%", 
+              height: "90%",
+              borderRadius: '12px'
+            }}
           >
             {selectedImages.map((img, index) => (
               <SwiperSlide key={index}>
@@ -789,7 +938,7 @@ const Profile = () => {
           </Swiper>
         </Box>
       </Modal>
-
+      
       <ProfilePicModal />
 
       {/* Error Snackbars */}
@@ -799,7 +948,14 @@ const Profile = () => {
         onClose={() => setError(null)}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
-        <Alert onClose={() => setError(null)} severity="error">
+        <Alert 
+          onClose={() => setError(null)} 
+          severity="error"
+          sx={{ 
+            borderRadius: '12px',
+            boxShadow: mytheme.shadows[4]
+          }}
+        >
           {error}
         </Alert>
       </Snackbar>
@@ -810,7 +966,14 @@ const Profile = () => {
         onClose={handleCloseDeleteError}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
-        <Alert onClose={handleCloseDeleteError} severity="error">
+        <Alert 
+          onClose={handleCloseDeleteError} 
+          severity="error"
+          sx={{ 
+            borderRadius: '12px',
+            boxShadow: mytheme.shadows[4]
+          }}
+        >
           {deleteError}
         </Alert>
       </Snackbar>

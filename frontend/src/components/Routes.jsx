@@ -133,7 +133,7 @@ function AppRoutes() {
           }
         />
         <Route
-          path="/chat"
+          path="/chat/:uid?"
           element={user ? <Chat /> : <Navigate to="/signin" />}
         />
         <Route

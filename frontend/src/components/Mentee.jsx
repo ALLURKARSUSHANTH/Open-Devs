@@ -1,5 +1,37 @@
 import React, { useState, useEffect } from 'react';
-import { Grid, Card, CardContent, CardHeader, Avatar, Typography, Button, Collapse, Rating , TextField,Box} from '@mui/material';
+import { 
+  Grid, 
+  Card, 
+  CardContent, 
+  CardHeader, 
+  Avatar, 
+  Typography, 
+  Button, 
+  Collapse, 
+  Rating, 
+  TextField,
+  Box,
+  Chip,
+  Divider,
+  CircularProgress,
+  Paper,
+  Badge,
+  IconButton,
+  List,
+  ListItem,
+  ListItemAvatar,
+  ListItemText
+} from '@mui/material';
+import { 
+  ExpandMore, 
+  ExpandLess, 
+  Star, 
+  Send,
+  People,
+  School,
+  Email,
+  Chat
+} from '@mui/icons-material';
 import axios from 'axios';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
 import { useNavigate } from 'react-router-dom';
@@ -10,13 +42,12 @@ const Mentee = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [loggedInUserId, setLoggedInUserId] = useState(null);
-  const [expandedMentor, setExpandedMentor] = useState(null); // For handling expanded cards
-  const [rating, setRating] = useState(0); // Store rating value
-  const [feedback, setFeedback] = useState(''); // Store feedback message
-  const [selectedMentor, setSelectedMentor] = useState(null); // Mentor currently being rated
+  const [expandedMentor, setExpandedMentor] = useState(null);
+  const [rating, setRating] = useState(0);
+  const [feedback, setFeedback] = useState('');
+  const [selectedMentor, setSelectedMentor] = useState(null);
   const API_URL = import.meta.env.VITE_API_URL;
   const navigate = useNavigate();
-
 
   useEffect(() => {
     const auth = getAuth();
@@ -35,15 +66,14 @@ const Mentee = () => {
           params: { currentUserId: loggedInUserId },
         });
     
-        // Ensure that each mentor has an averageRating
         const updatedMentors = response.data.map(mentor => {
           const averageRating = mentor.reviews.length > 0
             ? mentor.reviews.reduce((acc, review) => acc + review.rating, 0) / mentor.reviews.length
             : 0;
-          return { ...mentor, averageRating }; // Add averageRating to the mentor object
+          return { ...mentor, averageRating };
         });
     
-        setMentors(updatedMentors); // Set the updated mentors
+        setMentors(updatedMentors);
       } catch (err) {
         setError('Error fetching mentors');
       } finally {
@@ -55,12 +85,8 @@ const Mentee = () => {
   }, [loggedInUserId]);
 
   const toggleExpand = (mentorId) => {
-    setExpandedMentor((prevId) => (prevId === mentorId ? null : mentorId)); // Toggle expand/collapse
+    setExpandedMentor((prevId) => (prevId === mentorId ? null : mentorId));
   };
-
-  const viewMentor = ()=>{
-    alert("will be available soon");
-  }
 
   const requestMentorship = async (mentorId) => {
     try {
@@ -75,25 +101,14 @@ const Mentee = () => {
     }
   };
 
-  const fetchMentorDetails = async (mentorId) => {
-    try {
-      const response = await axios.get(`${API_URL}/mentor/${mentorId}`);
-      return response.data;
-    } catch (error) {
-      console.error(error);
-      setError('Error fetching mentor details');
-    }
-  };
   const handleRatingChange = (event, newValue) => {
-    setRating(newValue); // Update rating
+    setRating(newValue);
   };
 
   const handleFeedbackChange = (event) => {
-    setFeedback(event.target.value); // Update feedback message
+    setFeedback(event.target.value);
   };
 
-
-  
   const submitRating = async (mentorId) => {
     if (!rating || !feedback) {
       alert("Please provide both a rating and feedback.");
@@ -116,98 +131,195 @@ const Mentee = () => {
     }
   };
 
-
   return (
-    
-    <Grid container spacing={3} justifyContent="center" sx={{ padding: 3 }}>
-      <Box>
-      <Button
-      >Become a mentor</Button>
-    </Box>
-      {loading && <Typography variant="h6">Loading...</Typography>}
-      {error && <Typography variant="h6" color="error">{error}</Typography>}
+    <Box sx={{ p: 3 }}>
+      <Typography variant="h4" sx={{ 
+        fontWeight: 'bold', 
+        mb: 4, 
+        color: 'primary.main',
+        textAlign: 'center'
+      }}>
+        Find Your Mentor
+      </Typography>
+
+      {loading && (
+        <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px">
+          <CircularProgress size={60} />
+        </Box>
+      )}
+
+      {error && (
+        <Paper elevation={3} sx={{ p: 3, mb: 3, bgcolor: 'error.light' }}>
+          <Typography variant="h6" color="error">{error}</Typography>
+        </Paper>
+      )}
 
       {!loading && !error && mentors.length === 0 && (
-        <Typography variant="h6">No mentors available at the moment.</Typography>
+        <Paper elevation={3} sx={{ p: 4, textAlign: 'center' }}>
+          <Typography variant="h5" color="textSecondary">
+            No mentors available at the moment.
+          </Typography>
+          <Typography variant="body1" sx={{ mt: 2 }}>
+            Check back later or try refreshing the page.
+          </Typography>
+        </Paper>
       )}
-      {!loading && !error && mentors.map((mentor) => (
-        <Grid item xs={12} sm={6} md={4} key={mentor._id}>
-          
-          <Card sx={{ display: 'flex', flexDirection: 'column', borderRadius: 2, boxShadow: 6 }}>
-            <CardHeader
-              avatar={<Avatar src={mentor._id?.photoURL || ''} />}
-              title={mentor._id?.displayName || 'Unknown Mentor'}
-              subheader={mentor._id?.email || 'No email provided'}
-              sx={{ paddingBottom: 0 }}
-              onClick={(e) => {
-                e.stopPropagation();
-                const uid = mentor._id?._id; // Assuming uid is stored in mentor._id
-                if (uid) {
-                  // Navigate to author's profile
-                  console.log(`Navigate to profile of ${uid}`);
-                  navigate(`/profile/${uid}`);
+
+      <Grid container spacing={3}>
+        {!loading && !error && mentors.map((mentor) => (
+          <Grid item xs={12} sm={6} md={4} key={mentor._id}>
+            <Card sx={{ 
+              height: '100%', 
+              display: 'flex', 
+              flexDirection: 'column',
+              transition: 'all 0.3s ease',
+              '&:hover': {
+                transform: 'translateY(-5px)',
+                boxShadow: 8
+              }
+            }}>
+              <CardHeader
+                avatar={
+                  <Badge
+                    overlap="circular"
+                    anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                    badgeContent={
+                      <School color="primary" fontSize="small" />
+                    }
+                  >
+                    <Avatar 
+                      src={mentor._id?.photoURL || ''} 
+                      sx={{ 
+                        width: 56, 
+                        height: 56,
+                        cursor: 'pointer'
+                      }}
+                      onClick={() => navigate(`/profile/${mentor._id?._id}`)}
+                    />
+                  </Badge>
                 }
-              }}// Navigate to mentor's profile
-            />
-            <CardContent sx={{ flexGrow: 1 }}>
-              <Typography variant="body1" sx={{ fontWeight: 'bold' }}>Skills</Typography>
-              <Typography variant="body2">{mentor._id?.skills?.join(', ') || 'No skills listed'}</Typography>
+                title={
+                  <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                    {mentor._id?.displayName || 'Unknown Mentor'}
+                  </Typography>
+                }
+                subheader={
+                  <Typography variant="body2" color="text.secondary">
+                    {mentor._id?.email || 'No email provided'}
+                  </Typography>
+                }
+                action={
+                  <IconButton onClick={() => toggleExpand(mentor._id)}>
+                    {expandedMentor === mentor._id ? <ExpandLess /> : <ExpandMore />}
+                  </IconButton>
+                }
+                sx={{ 
+                  pb: 1,
+                  borderBottom: '1px solid',
+                  borderColor: 'divider'
+                }}
+              />
 
-              <Typography variant="body1" sx={{ fontWeight: 'bold' }}>Level</Typography>
-              <Typography variant="body2">{mentor._id?.level || 'No level provided'}</Typography>
+              <CardContent sx={{ flexGrow: 1 }}>
+                <Box display="flex" alignItems="center" mb={1}>
+                  <Rating 
+                    value={mentor.averageRating} 
+                    readOnly 
+                    precision={0.5}
+                    emptyIcon={<Star style={{ opacity: 0.55 }} fontSize="inherit" />}
+                  />
+                  <Typography variant="body2" sx={{ ml: 1 }}>
+                    ({mentor.reviews.length} reviews)
+                  </Typography>
+                </Box>
 
-              <Typography variant="body1" sx={{ fontWeight: 'bold' }}>Followers</Typography>
-              <Typography variant="body2">{mentor._id?.followers?.length || 'No followers'}</Typography>
+                <Box mb={2}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>
+                    Skills
+                  </Typography>
+                  <Box display="flex" flexWrap="wrap" gap={1}>
+                    {mentor._id?.skills?.slice(0, 3).map((skill, index) => (
+                      <Chip 
+                        key={index} 
+                        label={skill} 
+                        size="small" 
+                        color="primary"
+                        variant="outlined"
+                      />
+                    ))}
+                    {mentor._id?.skills?.length > 3 && (
+                      <Chip label={`+${mentor._id.skills.length - 3}`} size="small" />
+                    )}
+                  </Box>
+                </Box>
 
-              {/* Display Average Rating */}
-              <Typography variant="body1" sx={{ fontWeight: 'bold' }}>Average Rating</Typography>
-                <Rating value={mentor.averageRating} readOnly />
+                <Box display="flex" justifyContent="space-between" mb={2}>
+                  <Box display="flex" alignItems="center">
+                    <People color="action" sx={{ mr: 1 }} />
+                    <Typography variant="body2">
+                      {mentor._id?.followers?.length || 0} followers
+                    </Typography>
+                  </Box>
+                  <Chip 
+                    label={mentor._id?.level || 'No level'} 
+                    color="secondary" 
+                    size="small" 
+                    variant="outlined"
+                  />
+                </Box>
 
-              <Button
-                variant="contained"
-                color="primary"
-                fullWidth
-                onClick={() => {
-                  if (mentor.mentees.includes(loggedInUserId)) {
-                    viewMentor(mentor._id); // View mentor details if already a mentee
-                  } else {
-                    requestMentorship(mentor._id); // Request mentorship if not a mentee
-                  }
-                }}                
-                sx={{ marginTop: 2 }}
-              >
-                {mentor.mentees.includes(loggedInUserId) ? "Your Mentor" : "Request Mentorship"}
-              </Button>
+                <Button
+                  variant={mentor.mentees.includes(loggedInUserId) ? "outlined" : "contained"}
+                  color="primary"
+                  fullWidth
+                  startIcon={<Send />}
+                  onClick={() => {
+                    if (mentor.mentees.includes(loggedInUserId)) {
+                      navigate(`/profile/${mentor._id?._id}`);
+                    } else {
+                      requestMentorship(mentor._id);
+                    }
+                  }}
+                  sx={{ mb: 2 }}
+                >
+                  {mentor.mentees.includes(loggedInUserId) ? "Your Mentor" : "Request Mentorship"}
+                </Button>
 
-              <Button
-                variant="outlined"
-                color="secondary"
-                fullWidth
-                onClick={() => toggleExpand(mentor._id)} // Toggle the expansion of the mentor card
-                sx={{ marginTop: 2 }}
-              >
-                {expandedMentor === mentor._id ? 'Collapse' : 'Expand'}
-              </Button>
+                <Button
+                  variant="text"
+                  color="primary"
+                  fullWidth
+                  startIcon={<Chat />}
+                  onClick={() => navigate(`/chat/${mentor._id?._id}`)}
+                >
+                  Send Message
+                </Button>
+              </CardContent>
+
               <Collapse in={expandedMentor === mentor._id}>
-                <Grid container direction="column" spacing={1} sx={{ marginTop: 2 }}>
-                  <Grid item>
-                    <Typography variant="h6" sx={{ fontWeight: 'bold' }}>Give Rating</Typography>
+                <Divider />
+                <CardContent>
+                  <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2 }}>
+                    Rate & Review
+                  </Typography>
+                  
+                  <Box mb={3}>
                     <Rating
                       value={rating}
                       onChange={handleRatingChange}
                       precision={0.5}
                       size="large"
-                      sx={{ marginBottom: 2 }}
+                      sx={{ mb: 2 }}
                     />
                     <TextField
-                      label="Feedback"
+                      label="Your feedback"
                       variant="outlined"
                       multiline
-                      rows={4}
+                      rows={3}
                       value={feedback}
                       onChange={handleFeedbackChange}
                       fullWidth
-                      sx={{ marginBottom: 2 }}
+                      sx={{ mb: 2 }}
                     />
                     <Button
                       variant="contained"
@@ -218,35 +330,55 @@ const Mentee = () => {
                       }}
                       fullWidth
                     >
-                      Submit Rating
+                      Submit Review
                     </Button>
-                  </Grid>
-                </Grid>
-              </Collapse>
+                  </Box>
 
-              <Collapse in={expandedMentor === mentor._id}>
-                <Grid container direction="column" spacing={1} sx={{ marginTop: 2 }}>
-                  <Grid item>
-                    <Typography variant="h6" sx={{ fontWeight: 'bold' }}>Reviews</Typography>
-                  </Grid>
+                  <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2 }}>
+                    Reviews ({mentor.reviews.length})
+                  </Typography>
+                  
                   {mentor.reviews.length > 0 ? (
-                    mentor.reviews.map((review, index) => (
-                      <Grid item key={index} sx={{ marginBottom: 2 }}>
-                        <Typography variant="body1"><strong>{review.menteeId.displayName}</strong></Typography>
-                        <Rating value={review.rating} readOnly />
-                        <Typography variant="body2">{review.feedback}</Typography>
-                      </Grid>
-                    ))
+                    <List sx={{ maxHeight: 200, overflow: 'auto' }}>
+                      {mentor.reviews.map((review, index) => (
+                        <React.Fragment key={index}>
+                          <ListItem alignItems="flex-start" sx={{ px: 0 }}>
+                            <ListItemAvatar>
+                              <Avatar src={review.menteeId?.photoURL} />
+                            </ListItemAvatar>
+                            <ListItemText
+                              primary={review.menteeId?.displayName || 'Anonymous'}
+                              secondary={
+                                <>
+                                  <Rating value={review.rating} readOnly size="small" />
+                                  <Typography variant="body2">
+                                    {review.feedback}
+                                  </Typography>
+                                  <Typography variant="caption" color="text.secondary">
+                                    {new Date(review.createdAt).toLocaleDateString()}
+                                  </Typography>
+                                </>
+                              }
+                            />
+                          </ListItem>
+                          {index < mentor.reviews.length - 1 && <Divider variant="inset" component="li" />}
+                        </React.Fragment>
+                      ))}
+                    </List>
                   ) : (
-                    <Typography variant="body2">No reviews yet.</Typography>
+                    <Paper elevation={0} sx={{ p: 2, bgcolor: 'background.default' }}>
+                      <Typography variant="body2" color="text.secondary" align="center">
+                        No reviews yet. Be the first to review!
+                      </Typography>
+                    </Paper>
                   )}
-                </Grid>
+                </CardContent>
               </Collapse>
-            </CardContent>
-          </Card>
-        </Grid>
-      ))}
-    </Grid>
+            </Card>
+          </Grid>
+        ))}
+      </Grid>
+    </Box>
   );
 };
 

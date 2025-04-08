@@ -45,7 +45,7 @@ const FollowersList = memo(({ followers, open, onClose,loggedInUserId, userId, o
         setRemoving(true);
         try {
           const response = await axios.delete(
-            `${API_URL}/remove-follower/${selectedFollowerId}`,
+            `${API_URL}/follow/remove-follower/${selectedFollowerId}`,
             {
               data: { userId: loggedInUserId },
             }

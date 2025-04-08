@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const User = require('../models/User');
 const Mentor = require('../models/Mentor');
 const Notification = require('../models/Notification');
+const {LEVEL_THRESHOLDS,getCurrentLevel} = require('../utils/levels');
 
 exports.applyForMentorship = async (req, res) => {
   try {
@@ -9,28 +10,76 @@ exports.applyForMentorship = async (req, res) => {
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
-    if (user.level === 'beginner') {
-      res.status(400).json({ error: "User is not eligible to become a mentor" });
-    } else if ((user.level === 'intermediate' && user.points >= 10000) || (user.level === 'advanced' && user.points >= 20000)) {
-      res.send("Your application has been submitted successfully");
-    } else {
-      res.status(400).json({ error: "User is not eligible to become a mentor" });
+
+    const currentLevel = getCurrentLevel(user.points);
+    
+    // Check eligibility based on level and points
+    if (currentLevel === 'beginner') {
+      return res.status(400).json({ 
+        error: "User is not eligible to become a mentor",
+        details: {
+          currentLevel,
+          currentPoints: user.points,
+          requiredLevel: "intermediate",
+          requiredPoints: LEVEL_THRESHOLDS.intermediate
+        }
+      });
     }
-  } catch (error) {
-    return res.status(500).json({ error: error.message });
-  }
-};
-exports.createMentor = async (req, res) => {
-  try {
-    const user = await User.findById(req.params.firebaseUid);
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
+
+    if ((currentLevel === 'intermediate' && user.points >= LEVEL_THRESHOLDS.intermediate) || 
+        (currentLevel === 'advanced' && user.points >= LEVEL_THRESHOLDS.advanced) ||
+        (currentLevel === 'expert' && user.points >= LEVEL_THRESHOLDS.expert) ||
+        (currentLevel === 'master' && user.points >= LEVEL_THRESHOLDS.master)) {
+      
+      // Check if user is already a mentor
+      const existingMentor = await Mentor.findById(req.params.firebaseUid);
+      if (existingMentor) {
+        return res.status(400).json({ error: "User is already a mentor" });
+      }
+
+      // Create mentor profile - no need to save separately when using create()
+      const mentor = await Mentor.create({
+        _id: req.params.firebaseUid,
+        mentees: [],
+        menteeRequests: [],
+        status: 'available',
+        reviews: []
+      });
+      
+      // Update user role to mentor
+      user.role = 'mentor';
+      user.level = currentLevel;
+      await user.save();
+      
+      return res.status(201).json({ 
+        success: true,
+        message: "Mentor application approved and profile created successfully",
+        mentor,
+        user: {
+          id: user._id,
+          role: user.role,
+          level: user.level
+        }
+      });
     }
-    const mentor = await Mentor.create({ _id: req.params.firebaseUid });
-    mentor.save();
-    res.status(201).send(mentor);
+
+    return res.status(400).json({ 
+      error: "User is not eligible to become a mentor",
+      details: {
+        currentLevel,
+        currentPoints: user.points,
+        requiredPoints: currentLevel === 'intermediate' 
+          ? LEVEL_THRESHOLDS.advanced 
+          : LEVEL_THRESHOLDS.expert
+      }
+    });
+
   } catch (error) {
-    res.status(500).send(error);
+    console.error("Mentorship application error:", error);
+    return res.status(500).json({ 
+      error: "Internal server error",
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 };
 
@@ -88,48 +137,6 @@ exports.becomeMentee = async (req, res) => {
   } catch (error) {
     console.error("Error in becomeMentee:", error);
     return res.status(500).json({ error: "Internal server error" });
-  }
-};
-
-
-
-exports.acceptMentee = async (req, res) => {
-  try {
-    const mentorId = req.params.firebaseUid;
-    const menteeId = req.params.menteeId;
-    const mentor = await Mentor.findOne({ _id: mentorId });
-    if (!mentor) {
-      return res.status(400).json({ error: "Mentor not found" });
-    }
-    const mentee = await User.findById(menteeId);
-    if (!mentee) {
-      return res.status(400).json({ error: "Mentee not found" });
-    }
-    if (!mentor.menteeRequests.includes(menteeId)) {
-      return res.status(400).json({ error: "Mentee request not found" });
-    }
-    mentor.menteeRequests = mentor.menteeRequests.filter((id) => id !== menteeId);
-    mentor.mentees.push(menteeId);
-    const student = await User.findById(menteeId);
-    if (!student) {
-      return res.status(400).json({ error: "Student not found" });
-    }
-    const mentorUser = await User.findById(mentorId);
-    if (!mentorUser) {
-      return res.status(400).json({ error: "Mentor user not found" });
-    }
-
-    await mentorUser.connections.push(menteeId);
-    await student.connections.push(mentorId);
-    await student.save();
-    await mentor.save();
-    await Notification.updateMany(
-      { userId: menteeId, senderId: mentorId }, // matching menteeId as user and mentorId as sender
-      { $set: { isRead: true, message: `Your mentee request to ${mentor.displayName} has been accepted.` } }
-    );
-    res.status(200).send(mentor);
-  } catch (error) {
-    res.status(500).send(error);
   }
 };
 
@@ -214,23 +221,97 @@ exports.getMentorDetails = async (req, res) => {
 
 
 
-exports.getMentee = async (req, res) => {
-    try {
-      const currentUserId = req.params.firebaseUid;
-  
-      const mentor = await Mentor.findOne({ _id: currentUserId });
-  
-      if (!mentor) {
-        return res.status(400).json({ error: "Only mentors can view their mentees" });
-      }
-  
-      const mentees = await User.find({ _id: { $in: mentor.mentees } })
-        .select('email displayName')
-        .exec();
-  
-      res.status(200).send(mentees);
-    } catch (error) {
-      res.status(500).send(error);
+exports.getMentees = async (req, res) => {
+  try {
+    const mentor = await Mentor.findById(req.params.mentorId)
+      .populate('mentees', 'displayName email photoURL bio skills createdAt');
+    
+    if (!mentor) {
+      return res.status(404).json({ error: "Mentor not found" });
     }
-  };
-  
+
+    res.status(200).json(mentor.mentees);
+  } catch (error) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+exports.getMenteeRequests = async (req, res) => {
+  try {
+    const mentor = await Mentor.findById(req.params.mentorId)
+      .populate({
+        path: 'menteeRequests',
+        populate: {
+          path: 'mentee',
+          select: 'displayName email photoURL bio skills createdAt'
+        }
+      });
+    
+    if (!mentor) {
+      return res.status(404).json({ error: "Mentor not found" });
+    }
+
+    // Transform data to match frontend expectations
+    const requests = mentor.menteeRequests.map(request => ({
+      _id: request._id,
+      mentee: request.mentee,
+      message: request.message || "Wants to connect with you",
+      createdAt: request.createdAt,
+      read: request.read || false
+    }));
+
+    res.status(200).json(requests);
+  } catch (error) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+exports.markRequestAsRead = async (req, res) => {
+  try {
+    const request = await MenteeRequest.findByIdAndUpdate(
+      req.params.requestId,
+      { read: true },
+      { new: true }
+    );
+
+    if (!request) {
+      return res.status(404).json({ error: "Request not found" });
+    }
+
+    res.status(200).json(request);
+  } catch (error) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+exports.acceptMenteeRequest = async (req, res) => {
+  try {
+    const { menteeId } = req.body;
+    const requestId = req.params.requestId;
+
+    // Find and update the request
+    const request = await MenteeRequest.findById(requestId);
+    if (!request) {
+      return res.status(404).json({ error: "Request not found" });
+    }
+
+    // Update mentor's mentees list
+    const mentor = await Mentor.findById(request.mentor);
+    if (!mentor) {
+      return res.status(404).json({ error: "Mentor not found" });
+    }
+
+    // Add mentee if not already present
+    if (!mentor.mentees.includes(menteeId)) {
+      mentor.mentees.push(menteeId);
+      await mentor.save();
+    }
+
+    // Remove from requests
+    await MenteeRequest.findByIdAndDelete(requestId);
+
+    res.status(200).json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
