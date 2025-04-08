@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'; //comments not being shown in mobile view
+import React, { useState, useEffect, useCallback } from 'react';
 import { useSelector } from 'react-redux';
 import { useNavigate, useParams } from 'react-router-dom';
 import { skillsList } from '../services/Skills';
@@ -18,6 +18,9 @@ import {
   IconButton,
   Chip,
   Stack,
+  Snackbar,
+  Alert,
+  Collapse
 } from "@mui/material";
 import { logout } from "../firebase/auth";
 import {
@@ -25,7 +28,6 @@ import {
   Favorite as FollowersIcon,
   PhotoLibrary as PostsIcon,
   Close as CloseIcon,
-  ImportantDevices,
 } from "@mui/icons-material";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Navigation, Pagination } from "swiper/modules";
@@ -40,7 +42,7 @@ import { fetchComments } from "../services/posts";
 import usePostActions from "../components/postActions";
 
 const Profile = () => {
-  const {uid} = useParams();
+  const { uid } = useParams();
   const isMobile = useMediaQuery((theme) => theme.breakpoints.down("sm"));
   const [profilePicModalOpen, setProfilePicModalOpen] = useState(false);
   const {
@@ -90,38 +92,40 @@ const Profile = () => {
     email: profile?.email || "No email available",
     photoURL: profile?.photoURL || "",
     level: profile?.level || "Beginner",
-    points : profile?.points || 0
+    points: profile?.points || 0,
+    skills: profile?.skills || []
   });
   const [followers, setFollowers] = useState([]);
   const [connections, setConnections] = useState([]);
   const [posts, setPosts] = useState([]);
   const [selectedPost, setSelectedPost] = useState(null);
+  const [deleteError, setDeleteError] = useState(null);
+  const [deletingPostId, setDeletingPostId] = useState(null);
 
   // For post expansion and comments
   const [postComments, setPostComments] = useState({});
 
   const [followersModalOpen, setFollowersModalOpen] = useState(false);
   const [connectionsModalOpen, setConnectionsModalOpen] = useState(false);
-  const [skills, setSkills] = useState(profile?.skills || []);
   const [newSkill, setNewSkill] = useState('');
   const [skillSuggestions, setSkillSuggestions] = useState([]);
-  const currentUser = uid ===loggedInUserId;
+  const currentUser = uid === loggedInUserId;
 
   useEffect(() => {
-    const fetchCounts = async () => {
+    const fetchProfileData = async () => {
       if (!uid) return;
       try {
-
+        setLoading(true);
         const profileRes = await axios.get(`${API_URL}/users/firebase/${uid}`);
-        setProfileData((prev) => ({
-          ...prev,
+        setProfileData({
           displayName: profileRes.data.displayName,
           email: profileRes.data.email,
           photoURL: profileRes.data.photoURL,
           level: profileRes.data.level,
           points: profileRes.data.points,
-        }));
-        setSkills(profileRes.data.skills || []);
+          skills: profileRes.data.skills || []
+        });
+
         const [followersRes, postsRes, connectionsRes] = await Promise.all([
           axios.get(`${API_URL}/follow/${uid}/followers-count`),
           axios.get(`${API_URL}/posts/getProfile/${uid}`),
@@ -146,16 +150,51 @@ const Profile = () => {
         }
         setPostComments(comments);
       } catch (err) {
-        console.error("Error fetching counts:", err);
+        console.error("Error fetching profile data:", err);
         setError(
           err.response?.data?.message ||
-            "An error occurred while fetching data.",
+          "An error occurred while fetching data.",
         );
+      } finally {
+        setLoading(false);
       }
     };
 
-    fetchCounts();
-  }, [uid]);
+    fetchProfileData();
+  }, [uid, API_URL]);
+
+  const handleDeletePost = async (postId) => {
+    try {
+      setDeletingPostId(postId);
+      const postToDelete = posts.find(post => post._id === postId);
+      
+      // Optimistic UI update
+      setPosts(prev => prev.filter(post => post._id !== postId));
+      if (selectedPost?._id === postId) {
+        setSelectedPost(null);
+      }
+
+      await axios.delete(`${API_URL}/posts/deletePost/${postId}`);
+      setSelectedPost(null)
+      
+      setCounts(prev => ({
+        ...prev,
+        posts: prev.posts - 1
+      }));
+      
+    } catch (error) {
+      console.error("Delete failed:", error);
+      setDeleteError(error.response?.data?.message || "Failed to delete post");
+      // Revert UI if API fails
+      setPosts(prev => [...prev, posts.find(post => post._id === postId)]);
+    } finally {
+      setDeletingPostId(null);
+    }
+  };
+
+  const handleCloseDeleteError = () => {
+    setDeleteError(null);
+  };
 
   const handleLogout = async () => {
     try {
@@ -163,36 +202,27 @@ const Profile = () => {
       navigate("/signin");
     } catch (error) {
       console.error("Logout failed", error);
+      setError("Failed to logout");
     }
   };
 
   const handleRemoveFollower = useCallback((followerId) => {
-    setFollowers((prevFollowers) =>
-      prevFollowers.filter((follower) => follower._id !== followerId),
-    );
-    setCounts((prevCounts) => ({
-      ...prevCounts,
-      followers: prevCounts.followers - 1,
-    }));
+    setFollowers((prev) => prev.filter(f => f._id !== followerId));
+    setCounts(prev => ({ ...prev, followers: prev.followers - 1 }));
   }, []);
 
   const handleRemoveConnection = useCallback((connectionId) => {
-    setConnections((prevConnections) =>
-      prevConnections.filter((connection) => connection._id !== connectionId),
-    );
+    setConnections((prev) => prev.filter(c => c._id !== connectionId));
+    setCounts(prev => ({ ...prev, connections: prev.connections - 1 }));
   }, []);
 
-  const handleSave = async (skill = null) => {
+  const handleSave = async () => {
     try {
       await axios.put(`${API_URL}/users/update/${uid}`, {
         displayName: profileData.displayName,
-        photoURL: profileData.photoURL,       
+        photoURL: profileData.photoURL,
+        skills: profileData.skills
       });
-      if(profileData.skills){
-      await axios.patch(`${API_URL}/users/skills/${uid}`, {
-        skills: profileData.skills,
-      });
-    }
       setIsEditing(false);
     } catch (error) {
       console.error("Error updating profile:", error);
@@ -203,64 +233,53 @@ const Profile = () => {
   const handlePhotoUpload = async (event) => {
     const file = event.target.files[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        const newPhotoURL = reader.result;
-        setProfileData((prev) => ({ ...prev, photoURL: newPhotoURL }));
-      };
-      reader.readAsDataURL(file);
+      try {
+        const formData = new FormData();
+        formData.append('image', file);
+        
+        const response = await axios.post(`${API_URL}/upload`, formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        });
+        
+        setProfileData(prev => ({ ...prev, photoURL: response.data.url }));
+      } catch (error) {
+        console.error("Error uploading photo:", error);
+        setError("Failed to upload photo");
+      }
     }
   };
 
   const handleSkillInputChange = (e) => {
     const value = e.target.value;
     setNewSkill(value);
+    setSkillSuggestions(
+      value.length > 0 
+        ? skillsList.filter(skill =>
+            skill.toLowerCase().includes(value.toLowerCase())
+          ).slice(0, 10)
+        : []
+    );
+  };
 
-    if (value.length > 0) {
-      const matches = skillsList.filter(skill =>
-        skill.toLowerCase().includes(value.toLowerCase())
-      );
-      setSkillSuggestions(matches);
-    } else {
+  const handleAddSkill = (skill = null) => {
+    const skillToAdd = skill || newSkill.trim();
+    if (skillToAdd && !profileData.skills.includes(skillToAdd)) {
+      setProfileData(prev => ({
+        ...prev,
+        skills: [...prev.skills, skillToAdd]
+      }));
+      setNewSkill('');
       setSkillSuggestions([]);
     }
   };
 
-  const handleAddSkill = async (skill = null) => {
-    const skillToAdd = skill || newSkill.trim();
-    if (skillToAdd && !skills.includes(skillToAdd)) {
-      try {
-        // Update local state immediately for better UX
-        const updatedSkills = [...skills, skillToAdd];
-        setProfileData((prev) => ({ ...prev, skills: updatedSkills }));
-        setSkills(updatedSkills);
-        setNewSkill('');
-        setSkillSuggestions([]);
-      } catch (error) {
-        console.error('Error updating skills:', error);
-        // Revert local state if API call fails
-        setSkills(skills);
-        setError('Failed to update skills.');
-      }
-    }
-  };
-
-  const handleRemoveSkill = async (skillToRemove) => {
-    try {
-      // Update local state immediately for better UX
-      const updatedSkills = skills.filter(skill => skill !== skillToRemove);
-      setSkills(updatedSkills);
-      
-      // Send the update to the backend
-      await axios.patch(`${API_URL}/users/skills/${uid}`, {
-        skills: updatedSkills
-      });
-    } catch (error) {
-      console.error('Error removing skill:', error);
-      // Revert local state if API call fails
-      setSkills(skills);
-      setError('Failed to remove skill.');
-    }
+  const handleRemoveSkill = (skillToRemove) => {
+    setProfileData(prev => ({
+      ...prev,
+      skills: prev.skills.filter(skill => skill !== skillToRemove)
+    }));
   };
 
   const handleKeyPress = (e) => {
@@ -274,49 +293,20 @@ const Profile = () => {
   const handleOpenConnectionsModal = () => setConnectionsModalOpen(true);
   const handleCloseConnectionsModal = () => setConnectionsModalOpen(false);
 
-  useEffect(() => {
-    const loadComments = async () => {
-      const comments = {};
-      for (const post of posts) {
-        const postComments = await fetchComments(post._id);
-        comments[post._id] = postComments;
-      }
-      setPostComments(comments);
-    };
-
-    if (posts.length > 0) {
-      loadComments();
-    }
-  }, [posts]);
-
-  if (loading) {
-    return (
-      <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
-        <CircularProgress />
-      </Box>
-    );
-  }
-
-  if (error) {
-    return <Box sx={{ color: "error.main", p: 2 }}>Error: {error}</Box>;
-  }
-
   const ProfilePicModal = () => (
     <Modal open={profilePicModalOpen} onClose={() => setProfilePicModalOpen(false)}>
-      <Box
-        sx={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: "rgba(0,0,0,0.9)",
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          p: 2,
-        }}
-      >
+      <Box sx={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: "rgba(0,0,0,0.9)",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        p: 2,
+      }}>
         <IconButton
           onClick={() => setProfilePicModalOpen(false)}
           sx={{ 
@@ -329,15 +319,13 @@ const Profile = () => {
         >
           <CloseIcon fontSize="large" />
         </IconButton>
-        <Box
-          sx={{
-            maxWidth: '90vw',
-            maxHeight: '90vh',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center'
-          }}
-        >
+        <Box sx={{
+          maxWidth: '90vw',
+          maxHeight: '90vh',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center'
+        }}>
           <img
             src={profileData.photoURL}
             alt={`${profileData.displayName}'s profile`}
@@ -351,33 +339,37 @@ const Profile = () => {
       </Box>
     </Modal>
   );
+
+  if (loading) {
+    return (
+      <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box sx={{ p: 2, textAlign: "center" }}>
+        <Alert severity="error">{error}</Alert>
+      </Box>
+    );
+  }
+
   return (
     <Box sx={{ width: "100%", padding: 0 }}>
-      <Grid
-        container
-        justifyContent="center"
-        alignItems="center"
-        spacing={2}
-        sx={{ padding: 0 }}
-      >
+      <Grid container justifyContent="center" spacing={2} sx={{ padding: 0 }}>
         <Grid item xs={12} sm={8} md={6}>
           <Card sx={{ borderRadius: 4, boxShadow: 6 }}>
-            <div
-              style={{
-                height: "150px",
-                background: "linear-gradient(135deg, #6a11cb, #2575fc)",
-                borderTopLeftRadius: "16px",
-                borderTopRightRadius: "16px",
-              }}
-            />
+            <div style={{
+              height: "150px",
+              background: "linear-gradient(135deg, #6a11cb, #2575fc)",
+              borderTopLeftRadius: "16px",
+              borderTopRightRadius: "16px",
+            }} />
 
             <CardContent>
-              <Grid
-                container
-                direction="column"
-                alignItems="center"
-                spacing={2}
-              >
+              <Grid container direction="column" alignItems="center" spacing={2}>
                 <Avatar
                   src={profileData.photoURL}
                   alt={profileData.displayName}
@@ -394,56 +386,34 @@ const Profile = () => {
                     }
                   }}
                 />
+
                 {isEditing ? (
-                  <Grid
-                    container
-                    direction="column"
-                    spacing={2}
-                    sx={{ width: "100%", marginTop: 2, paddingLeft: 2 }}
-                  >
+                  <Grid container direction="column" spacing={2} sx={{ width: "100%", mt: 2, pl: 2 }}>
                     <Grid item>
                       <TextField
                         label="Full Name"
                         value={profileData.displayName}
-                        onChange={(e) =>
-                          setProfileData((prev) => ({
-                            ...prev,
-                            displayName: e.target.value,
-                          }))
-                        }
+                        onChange={(e) => setProfileData(prev => ({ ...prev, displayName: e.target.value }))}
                         fullWidth
                         margin="normal"
                       />
                     </Grid>
+                    
                     <Grid item>
                       <TextField
                         label="Email"
                         value={profileData.email}
-                        onChange={(e) =>
-                          setProfileData((prev) => ({
-                            ...prev,
-                            email: e.target.value,
-                          }))
-                        }
+                        disabled
                         fullWidth
                         margin="normal"
-                        disabled
-                        sx={{
-                          backgroundColor: theme === 'dark' ? '#1c1c1c' : '#ffffff',
-                        }}
                       />
                     </Grid>
 
-                    {/* Skills Section */}
                     <Grid item>
-                      <Typography variant="subtitle1" sx={{ marginBottom: 1, fontWeight: 'bold' }}>
+                      <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 'bold' }}>
                         Skills
                       </Typography>
-
-                      <Typography variant="body2" sx={{ marginBottom: 1 }}>
-                        Enter a skill
-                      </Typography>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, marginBottom: 2 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
                         <TextField
                           value={newSkill}
                           onChange={handleSkillInputChange}
@@ -456,12 +426,12 @@ const Profile = () => {
                       </Box>
 
                       {skillSuggestions.length > 0 && (
-                        <Box sx={{ marginBottom: 2 }}>
-                          <Typography variant="body2" sx={{ marginBottom: 1 }}>
-                            Skill suggestions
+                        <Box sx={{ mb: 2 }}>
+                          <Typography variant="body2" sx={{ mb: 1 }}>
+                            Suggested Skills
                           </Typography>
                           <Grid container spacing={1}>
-                            {skillSuggestions.slice(0, 10).map((skill, index) => (
+                            {skillSuggestions.map((skill, index) => (
                               <Grid item key={index}>
                                 <Button
                                   variant="outlined"
@@ -471,13 +441,10 @@ const Profile = () => {
                                     borderRadius: '20px',
                                     padding: '4px 12px',
                                     fontSize: '0.875rem',
-                                    margin: '2px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '4px'
+                                    margin: '2px'
                                   }}
                                 >
-                                  <span style={{ fontSize: '1rem' }}>+</span> {skill}
+                                  + {skill}
                                 </Button>
                               </Grid>
                             ))}
@@ -486,118 +453,59 @@ const Profile = () => {
                       )}
 
                       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
-                        {skills.map((skill, index) => (
+                        {profileData.skills.map((skill, index) => (
                           <Chip
                             key={index}
                             label={skill}
                             onDelete={() => handleRemoveSkill(skill)}
-                            sx={{
-                               backgroundColor: theme === 'dark' ? '#1c1c1c' : '#ffffff'
-                            }}
                           />
                         ))}
                       </Box>
                     </Grid>
 
                     <Grid item>
-                      <Card
-                        sx={{
-                          borderRadius: 4,
-                          boxShadow: 6,
-                          background: "lightgray",
-                        }}
-                      >
-                        <CardContent>
-                          <Grid
-                            container
-                            alignItems="center"
-                            spacing={2}
-                            justifyContent="space-between"
-                          >
-                            <Grid item>
-                              <Grid container alignItems="center" spacing={2}>
-                                <Grid item>
-                                  <Avatar
-                                    src={profileData.photoURL}
-                                    alt={profileData.displayName}
-                                    sx={{
-                                      width: 60,
-                                      height: 60,
-                                      border: "2px solid black",
-                                    }}
-                                  />
-                                </Grid>
-                                <Grid item>
-                                  <Typography
-                                    variant="h6"
-                                    sx={{ fontWeight: "bold" }}
-                                  >
-                                    {profileData.displayName}
-                                  </Typography>
-                                </Grid>
-                              </Grid>
-                            </Grid>
-                            <Grid item>
-                              <input
-                                accept="image/*"
-                                style={{ display: "none" }}
-                                id="avatar-upload"
-                                type="file"
-                                onChange={handlePhotoUpload}
-                              />
-                              <label htmlFor="avatar-upload">
-                                <Button
-                                  variant="contained"
-                                  component="span"
-                                  sx={{
-                                    backgroundColor: "#007bff",
-                                    color: "white",
-                                    textTransform: "none",
-                                    borderRadius: "20px",
-                                    padding: "4px 12px",
-                                    fontSize: "12px",
-                                  }}
-                                >
-                                  Change photo
-                                </Button>
-                              </label>
-                            </Grid>
-                          </Grid>
-                        </CardContent>
-                      </Card>
+                      <input
+                        accept="image/*"
+                        style={{ display: "none" }}
+                        id="avatar-upload"
+                        type="file"
+                        onChange={handlePhotoUpload}
+                      />
+                      <label htmlFor="avatar-upload">
+                        <Button
+                          variant="contained"
+                          component="span"
+                          sx={{
+                            backgroundColor: "#007bff",
+                            color: "white",
+                            textTransform: "none",
+                            borderRadius: "20px",
+                          }}
+                        >
+                          Change Profile Photo
+                        </Button>
+                      </label>
                     </Grid>
                   </Grid>
                 ) : (
                   <>
-                    <Typography
-                      variant="h4"
-                      component="div"
-                      sx={{ marginTop: 2, fontWeight: "bold" }}
-                    >
+                    <Typography variant="h4" sx={{ mt: 2, fontWeight: "bold" }}>
                       {profileData.displayName}
                     </Typography>
                     <Typography variant="body1" color="text.secondary">
                       {profileData.email}
                     </Typography>
                     <Typography variant="body1" color="text.secondary">
-                      {profileData.level}
+                      Level: {profileData.level} | Points: {profileData.points}
                     </Typography>
-                    <Typography variant="body1" color="text.secondary">
-                      {profileData.points}
-                    </Typography>
-                    {skills.length > 0 && (
-                      <Box sx={{ marginTop: 2 }}>
+                    {profileData.skills.length > 0 && (
+                      <Box sx={{ mt: 2 }}>
                         <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
                           Skills:
                         </Typography>
-                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, marginTop: 1 }}>
-                          {skills.map((skill, index) => (
-                            <Chip
-                              key={index}
-                              label={skill}
-                              sx={{     backgroundColor: theme === 'dark' ? '#1c1c1c' : '#ffffff', // Add background color
-                              }}
-                            />
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
+                          {profileData.skills.map((skill, index) => (
+                            <Chip key={index} label={skill} />
                           ))}
                         </Box>
                       </Box>
@@ -605,11 +513,7 @@ const Profile = () => {
                   </>
                 )}
 
-                <Grid
-                  container
-                  justifyContent="space-around"
-                  sx={{ marginTop: 3 }}
-                >
+                <Grid container justifyContent="space-around" sx={{ mt: 3 }}>
                   <Grid item>
                     <Typography
                       variant="h6"
@@ -622,16 +526,10 @@ const Profile = () => {
                     <Typography
                       variant="body2"
                       color="text.secondary"
-                      sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        cursor: "pointer",
-                      }}
+                      sx={{ display: "flex", alignItems: "center", cursor: "pointer" }}
                       onClick={handleOpenConnectionsModal}
                     >
-                      <ConnectionsIcon
-                        sx={{ marginRight: 1, color: "#6a11cb" }}
-                      />{" "}
+                      <ConnectionsIcon sx={{ mr: 1, color: "#6a11cb" }} />
                       Connections
                     </Typography>
                   </Grid>
@@ -647,16 +545,10 @@ const Profile = () => {
                     <Typography
                       variant="body2"
                       color="text.secondary"
-                      sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        cursor: "pointer",
-                      }}
+                      sx={{ display: "flex", alignItems: "center", cursor: "pointer" }}
                       onClick={handleOpenFollowersModal}
                     >
-                      <FollowersIcon
-                        sx={{ marginRight: 1, color: "#ff4081" }}
-                      />{" "}
+                      <FollowersIcon sx={{ mr: 1, color: "#ff4081" }} />
                       Followers
                     </Typography>
                   </Grid>
@@ -669,7 +561,7 @@ const Profile = () => {
                       color="text.secondary"
                       sx={{ display: "flex", alignItems: "center" }}
                     >
-                      <PostsIcon sx={{ marginRight: 1, color: "#4caf50" }} />{" "}
+                      <PostsIcon sx={{ mr: 1, color: "#4caf50" }} />
                       Posts
                     </Typography>
                   </Grid>
@@ -681,7 +573,7 @@ const Profile = () => {
                   onClose={handleCloseFollowersModal}
                   onRemoveFollower={handleRemoveFollower}
                   loggedInUserId={loggedInUserId}
-                  userId ={uid}
+                  userId={uid}
                 />
                 <ConnectionsList
                   connections={connections}
@@ -689,84 +581,67 @@ const Profile = () => {
                   onClose={handleCloseConnectionsModal}
                   onRemoveConnection={handleRemoveConnection}
                   loggedInUserId={loggedInUserId}
-                  userId ={uid}
+                  userId={uid}
                 />
 
-                {currentUser ? (
-                <Grid
-                  container
-                  justifyContent="center"
-                  spacing={2}
-                  sx={{ marginTop: 3 }}
-                >
-                 
-                  <Grid item>
-                    {isEditing ? (
+                {currentUser && (
+                  <Grid container justifyContent="center" spacing={2} sx={{ mt: 3 }}>
+                    <Grid item>
                       <Button
-                        onClick={handleSave}
+                        onClick={isEditing ? handleSave : () => setIsEditing(true)}
                         color="primary"
+                        variant={isEditing ? "contained" : "outlined"}
+                        sx={{ borderRadius: 20 }}
+                      >
+                        {isEditing ? "Save Profile" : "Edit Profile"}
+                      </Button>
+                    </Grid>
+                    <Grid item>
+                      <Button
+                        onClick={handleLogout}
+                        color="secondary"
                         variant="contained"
                         sx={{ borderRadius: 20 }}
                       >
-                        Save
+                        Logout
                       </Button>
-                    ) : (
-                      <Button
-                        onClick={() => setIsEditing(true)}
-                        color="primary"
-                        variant="outlined"
-                        sx={{ borderRadius: 20 }}
-                      >
-                        Edit Profile
-                      </Button>
-                    )}
+                    </Grid>
                   </Grid>
-                  
-                  <Grid item>
-                    <Button
-                      onClick={handleLogout}
-                      color="secondary"
-                      variant="contained"
-                      sx={{ borderRadius: 20 }}
-                    >
-                      LogOut
-                    </Button>
-                  </Grid>
-                </Grid>
-                ): null}
+                )}
               </Grid>
             </CardContent>
           </Card>
         </Grid>
       </Grid>
 
-      {/* Posts section */}
+      {/* Posts Section */}
       <Box sx={{ p: 2, paddingBottom: "95px" }}>
         {posts.length === 0 ? (
           <Box sx={{ p: 2, textAlign: "center" }}>
             <Typography>No posts available</Typography>
           </Box>
         ) : isMobile ? (
-          // Mobile view - single column with comments drawer
           <>
             <Stack spacing={3}>
               {posts.map((post) => (
-                <PostCard
-                  key={post._id}
-                  post={post}
-                  loggedInUserId={uid}
-                  handleLike={handleLike}
-                  handleFollowToggle={handleFollowToggle}
-                  handleConnectToggle={handleConnectToggle}
-                  toggleCommentInput={(postId) => {
-                    setSelectedPost(posts.find(p => p._id === postId));
-                    setCommentsDrawerOpen(true);
-                  }}
-                  expandedPosts={expandedPosts}  // Pass the expandedPosts state
-                  toggleExpand={toggleExpand}
-                  openModal={openModal}
-                  theme={theme}
-                />
+                <Collapse in={post._id !== deletingPostId} key={post._id}>
+                  <PostCard
+                    post={post}
+                    loggedInUserId={loggedInUserId}
+                    handleLike={handleLike}
+                    handleFollowToggle={handleFollowToggle}
+                    handleConnectToggle={handleConnectToggle}
+                    handleDelete={handleDeletePost}
+                    toggleCommentInput={(postId) => {
+                      setSelectedPost(posts.find(p => p._id === postId));
+                      setCommentsDrawerOpen(true);
+                    }}
+                    expandedPosts={expandedPosts}
+                    toggleExpand={toggleExpand}
+                    openModal={openModal}
+                    theme={theme}
+                  />
+                </Collapse>
               ))}
             </Stack>
 
@@ -788,23 +663,25 @@ const Profile = () => {
             />
           </>
         ) : selectedPost ? (
-          // Desktop expanded view with comments on right and posts below
           <Box>
             <Box sx={{ display: "flex", mb: 4 }}>
               <Box sx={{ flex: 2 }}>
-                <PostCard
-                  post={selectedPost}
-                  loggedInUserId={uid}
-                  onClick={() => setSelectedPost(null)}
-                  toggleExpand={toggleExpand}
-                  expandedPosts={expandedPosts}  // Pass the expandedPosts state
-                  handleConnectToggle={handleConnectToggle}
-                  handleFollowToggle={handleFollowToggle}
-                  handleLike={handleLike}
-                  openModal={openModal}
-                  theme={theme}
-                  isExpanded
-                />
+                <Collapse in={selectedPost._id !== deletingPostId}>
+                  <PostCard
+                    post={selectedPost}
+                    loggedInUserId={loggedInUserId}
+                    onClick={() => setSelectedPost(null)}
+                    toggleExpand={toggleExpand}
+                    expandedPosts={expandedPosts}
+                    handleConnectToggle={handleConnectToggle}
+                    handleFollowToggle={handleFollowToggle}
+                    handleLike={handleLike}
+                    handleDelete={handleDeletePost}
+                    openModal={openModal}
+                    theme={theme}
+                    isExpanded
+                  />
+                </Collapse>
               </Box>
 
               <Box sx={{ flex: 1 }}>
@@ -812,9 +689,7 @@ const Profile = () => {
                   comments={postComments[selectedPost._id] || []}
                   commentText={commentText}
                   setCommentText={setCommentText}
-                  handleCommentSubmit={() =>
-                    handleCommentSubmit(selectedPost._id)
-                  }
+                  handleCommentSubmit={() => handleCommentSubmit(selectedPost._id)}
                   replyText={replyText}
                   setReplyText={setReplyText}
                   replyInputVisible={replyInputVisible}
@@ -836,52 +711,56 @@ const Profile = () => {
                   .filter((p) => p._id !== selectedPost._id)
                   .map((post) => (
                     <Grid item xs={12} sm={6} md={4} key={post._id}>
-                      <PostCard
-                        post={post}
-                        handleLike={handleLike}
-                        onClick={() => setSelectedPost(post)}
-                        loggedInUserId={uid}
-                        openModal={openModal}
-                        theme={theme}
-                      />
+                      <Collapse in={post._id !== deletingPostId}>
+                        <PostCard
+                          post={post}
+                          handleLike={handleLike}
+                          onClick={() => setSelectedPost(post)}
+                          loggedInUserId={loggedInUserId}
+                          openModal={openModal}
+                          handleDelete={handleDeletePost}
+                          theme={theme}
+                        />
+                      </Collapse>
                     </Grid>
                   ))}
               </Grid>
             </Box>
           </Box>
         ) : (
-          // Desktop grid view
           <Grid container spacing={3}>
             {posts.map((post) => (
               <Grid item xs={12} sm={6} md={4} lg={3} key={post._id}>
-                <PostCard
-                  post={post}
-                  onClick={() => setSelectedPost(post)}
-                  handleLike={handleLike}
-                  loggedInUserId={uid}
-                  openModal={openModal}
-                />
+                <Collapse in={post._id !== deletingPostId}>
+                  <PostCard
+                    post={post}
+                    onClick={() => setSelectedPost(post)}
+                    handleLike={handleLike}
+                    loggedInUserId={loggedInUserId}
+                    handleDelete={handleDeletePost}
+                    openModal={openModal}
+                    theme={theme}
+                  />
+                </Collapse>
               </Grid>
             ))}
           </Grid>
         )}
       </Box>
 
-      {/* Image modal */}
+      {/* Image Modal */}
       <Modal open={isModalOpen} onClose={closeModal}>
-        <Box
-          sx={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: "rgba(0,0,0,0.8)",
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-          }}
-        >
+        <Box sx={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: "rgba(0,0,0,0.8)",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+        }}>
           <IconButton
             onClick={closeModal}
             sx={{ position: "absolute", top: 16, right: 16, color: "white" }}
@@ -910,7 +789,31 @@ const Profile = () => {
           </Swiper>
         </Box>
       </Modal>
+
       <ProfilePicModal />
+
+      {/* Error Snackbars */}
+      <Snackbar
+        open={!!error}
+        autoHideDuration={6000}
+        onClose={() => setError(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert onClose={() => setError(null)} severity="error">
+          {error}
+        </Alert>
+      </Snackbar>
+
+      <Snackbar
+        open={!!deleteError}
+        autoHideDuration={6000}
+        onClose={handleCloseDeleteError}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert onClose={handleCloseDeleteError} severity="error">
+          {deleteError}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };
