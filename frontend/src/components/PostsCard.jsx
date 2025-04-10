@@ -21,7 +21,9 @@ import {
   Divider,
   Chip,
   useTheme,
-  useMediaQuery
+  useMediaQuery,
+  Menu,
+  MenuItem
 } from '@mui/material';
 import {
   FavoriteBorderOutlined,
@@ -32,7 +34,8 @@ import {
   PersonAdd,
   Link,
   ExpandMore,
-  ExpandLess
+  ExpandLess,
+  Share
 } from '@mui/icons-material';
 import MonacoEditor from "@monaco-editor/react";
 import { useNavigate } from 'react-router-dom';
@@ -96,6 +99,7 @@ const PostCard = ({
   const [error, setError] = useState(null);
   const [menuAnchor, setMenuAnchor] = useState(null);
   const [isDeleted, setIsDeleted] = useState(false);
+  const [showCopied, setShowCopied] = useState(false);
 
   const muiTheme = useTheme();
   const isMobile = useMediaQuery(muiTheme.breakpoints.down('sm'));
@@ -124,6 +128,7 @@ const PostCard = ({
       setError('Failed to like post');
     }
   };
+
   const handleOptimisticFollow = async (e, userId) => {
     e.stopPropagation();
     const wasFollowing = localState.isFollowing;
@@ -168,6 +173,7 @@ const PostCard = ({
   const handleDeleteClick = (e) => {
     e.stopPropagation();
     setDeleteConfirmOpen(true);
+    handleMenuClose();
   };
 
   const handleConfirmDelete = async () => {
@@ -175,9 +181,7 @@ const PostCard = ({
     setIsDeleting(true);
     try {
       await handleDelete(post._id);
-      // Trigger fade-out animation
       setIsDeleted(true);
-      // Wait for animation to complete before parent removes it
       await new Promise(resolve => setTimeout(resolve, 300));
     } catch (error) {
       console.error("Failed to delete post:", error);
@@ -199,6 +203,36 @@ const PostCard = ({
 
   const handleMenuClose = () => {
     setMenuAnchor(null);
+  };
+
+  const handleShare = (e) => {
+    e.stopPropagation();
+    const postUrl = `${window.location.origin}/post/${post._id}`;
+    
+    if (navigator.share) {
+      navigator.share({
+        title: `Post by ${post.author?.displayName || 'User'}`,
+        text: post.content.length > 50 
+          ? `${post.content.substring(0, 50)}...` 
+          : post.content,
+        url: postUrl,
+      }).catch(() => {
+        copyToClipboard(postUrl);
+      });
+    } else {
+      copyToClipboard(postUrl);
+    }
+  };
+
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text)
+      .then(() => {
+        setShowCopied(true);
+        setTimeout(() => setShowCopied(false), 2000);
+      })
+      .catch(() => {
+        setError('Failed to copy link');
+      });
   };
 
   if (isDeleted) return null;
@@ -297,9 +331,29 @@ const PostCard = ({
               )}
 
               {isAuthor && (
-                <IconButton onClick={handleMenuOpen}>
-                  <MoreVert />
-                </IconButton>
+                <>
+                  <IconButton onClick={handleMenuOpen}>
+                    <MoreVert />
+                  </IconButton>
+                  <Menu
+                    anchorEl={menuAnchor}
+                    open={Boolean(menuAnchor)}
+                    onClose={handleMenuClose}
+                    anchorOrigin={{
+                      vertical: 'bottom',
+                      horizontal: 'right',
+                    }}
+                    transformOrigin={{
+                      vertical: 'top',
+                      horizontal: 'right',
+                    }}
+                  >
+                    <MenuItem onClick={handleDeleteClick} sx={{ color: 'error.main' }}>
+                      <DeleteOutline sx={{ mr: 1 }} />
+                      Delete Post
+                    </MenuItem>
+                  </Menu>
+                </>
               )}
             </Box>
           </Box>
@@ -468,29 +522,24 @@ const PostCard = ({
                       {post.comments?.length || 0} {isMobile ? '' : 'Comments'}
                     </Button>
                   </Tooltip>
-                </Box>
 
-                {/* DELETE Button (only shown to author) */}
-                {isAuthor && (
-                  <Tooltip title="Delete">
-                    <IconButton
-                      onClick={handleDeleteClick}
+                  <Tooltip title="Share post">
+                    <Button
+                      startIcon={<Share />}
+                      onClick={handleShare}
                       sx={{
-                        color: 'error.main',
+                        borderRadius: 2,
+                        textTransform: 'none',
+                        color: 'text.secondary',
                         '&:hover': {
-                          backgroundColor: 'rgba(244, 67, 54, 0.08)'
+                          bgcolor: 'action.hover'
                         }
                       }}
-                      disabled={isDeleting}
                     >
-                      {isDeleting ? (
-                        <CircularProgress size={24} thickness={4} color="error" />
-                      ) : (
-                        <DeleteOutline />
-                      )}
-                    </IconButton>
+                      {isMobile ? '' : 'Share'}
+                    </Button>
                   </Tooltip>
-                )}
+                </Box>
               </Box>
             </>
           )}
@@ -556,6 +605,18 @@ const PostCard = ({
         >
           <Alert onClose={handleCloseError} severity="error" sx={{ width: '100%' }}>
             {error}
+          </Alert>
+        </Snackbar>
+
+        {/* Copied to clipboard notification */}
+        <Snackbar
+          open={showCopied}
+          autoHideDuration={2000}
+          onClose={() => setShowCopied(false)}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        >
+          <Alert severity="success" sx={{ width: '100%' }}>
+            Link copied to clipboard!
           </Alert>
         </Snackbar>
       </StyledCard>
