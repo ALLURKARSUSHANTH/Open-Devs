@@ -1,280 +1,238 @@
-import React, { useEffect, useRef, useState } from 'react';
-import socket from '../context/socket';
-import { Button, IconButton } from '@mui/material';
-import { useNavigate } from 'react-router-dom';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import Typography from '@mui/material/Typography';
+import React, { useState, useEffect, useRef } from 'react';
+import { Box, Button, Card, CardContent, Grid, Typography, IconButton } from '@mui/material';
+import { Mic, MicOff, Videocam, VideocamOff, ExitToApp } from '@mui/icons-material';
+import { AgoraService } from '../services/agoraService';
 
-const VideoStream = ({ userId }) => {
-  const [streams, setStreams] = useState([]);
-  const [myStream, setMyStream] = useState(null);
-  const [remoteStream, setRemoteStream] = useState(null);
-  const [viewers, setViewers] = useState(0);
-  const myVideoRef = useRef(null);
-  const remoteVideoRef = useRef(null);
-  const peerConnections = useRef({});
-  const navigate = useNavigate();
+const LiveStream = () => {
+  const [joined, setJoined] = useState(false);
+  const [isHost, setIsHost] = useState(false);
+  const [audioEnabled, setAudioEnabled] = useState(true);
+  const [videoEnabled, setVideoEnabled] = useState(true);
+  const [remoteUsers, setRemoteUsers] = useState([]);
+  const [channelName, setChannelName] = useState('');
+  
+  const localVideoRef = useRef(null);
+  const localTracksRef = useRef(null);
 
-  // Initialize socket connection
+  // Initialize Agora client
   useEffect(() => {
-    if (!socket.connected) {
-      socket.connect();
-    }
-
-    // Request active streams
-    socket.emit('getActiveStreams');
-
-    // Event listeners
-    const handleStreamStarted = ({ userId: streamerId }) => {
-      setStreams(prev => [...prev, { userId: streamerId }]);
-    };
-
-    const handleStreamEnded = (endedUserId) => {
-      setStreams(prev => prev.filter(stream => stream.userId !== endedUserId));
-      if (remoteStream && remoteStream.userId === endedUserId) {
-        setRemoteStream(null);
-        if (remoteVideoRef.current) {
-          remoteVideoRef.current.srcObject = null;
-        }
+    AgoraService.client.on('user-published', async (user, mediaType) => {
+      await AgoraService.client.subscribe(user, mediaType);
+      
+      if (mediaType === 'video') {
+        setRemoteUsers(prevUsers => {
+          if (!prevUsers.some(u => u.uid === user.uid)) {
+            return [...prevUsers, user];
+          }
+          return prevUsers;
+        });
       }
-    };
 
-    const handleActiveStreams = (activeStreams) => {
-      setStreams(activeStreams);
-    };
-
-    const handleViewerCount = (count) => {
-      setViewers(count);
-    };
-
-    const handleOffer = async ({ offer, sender }) => {
-      if (sender === userId) return;
-
-      const pc = new RTCPeerConnection({
-        iceServers: [
-          { urls: 'stun:stun.l.google.com:19302' },
-        ]
-      });
-      peerConnections.current[sender] = pc;
-
-      pc.onicecandidate = (e) => {
-        if (e.candidate) {
-          socket.emit('ice-candidate', {
-            candidate: e.candidate,
-            target: sender
-          });
-        }
-      };
-
-      pc.ontrack = (e) => {
-        if (e.streams && e.streams[0] && remoteVideoRef.current) {
-          remoteVideoRef.current.srcObject = e.streams[0];
-          setRemoteStream({ userId: sender, stream: e.streams[0] });
-        }
-      };
-
-      try {
-        await pc.setRemoteDescription(new RTCSessionDescription(offer));
-        const answer = await pc.createAnswer();
-        await pc.setLocalDescription(answer);
-        socket.emit('answer', { answer, target: sender });
-      } catch (err) {
-        console.error('Error handling offer:', err);
+      if (mediaType === 'audio') {
+        user.audioTrack?.play();
       }
-    };
+    });
 
-    const handleAnswer = async ({ answer, sender }) => {
-      const pc = peerConnections.current[sender];
-      if (pc) {
-        try {
-          await pc.setRemoteDescription(new RTCSessionDescription(answer));
-        } catch (err) {
-          console.error('Error handling answer:', err);
-        }
-      }
-    };
-
-    const handleIceCandidate = async ({ candidate, sender }) => {
-      const pc = peerConnections.current[sender];
-      if (pc && candidate) {
-        try {
-          await pc.addIceCandidate(new RTCIceCandidate(candidate));
-        } catch (e) {
-          console.error('Error adding ICE candidate:', e);
-        }
-      }
-    };
-
-    socket.on('streamStarted', handleStreamStarted);
-    socket.on('streamEnded', handleStreamEnded);
-    socket.on('activeStreams', handleActiveStreams);
-    socket.on('viewerCount', handleViewerCount);
-    socket.on('offer', handleOffer);
-    socket.on('answer', handleAnswer);
-    socket.on('ice-candidate', handleIceCandidate);
+    AgoraService.client.on('user-unpublished', (user) => {
+      setRemoteUsers(prevUsers => prevUsers.filter(u => u.uid !== user.uid));
+    });
 
     return () => {
-      socket.off('streamStarted', handleStreamStarted);
-      socket.off('streamEnded', handleStreamEnded);
-      socket.off('activeStreams', handleActiveStreams);
-      socket.off('viewerCount', handleViewerCount);
-      socket.off('offer', handleOffer);
-      socket.off('answer', handleAnswer);
-      socket.off('ice-candidate', handleIceCandidate);
-      
-      stopStreaming();
+      AgoraService.client.removeAllListeners();
     };
-  }, [userId]);
+  }, []);
 
-  const startStreaming = async () => {
-    // Check if stream already exists
-    if (myStream) {
-      console.log("Stream already exists.");
-      return;  // Exit early if the stream is already started
-    }
-  
+  const joinChannel = async (asHost = false) => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          width: 640,
-          height: 500,
-          frameRate: 30,
-          facingMode: 'user',
-        },
-        audio: true
-      });
-  
-      // Create a new stream to avoid reference issues
-      const newStream = new MediaStream();
-      stream.getTracks().forEach(track => newStream.addTrack(track));
-  
-      setMyStream(newStream); // Store the new stream
-  
-      if (myVideoRef.current) {
-        myVideoRef.current.srcObject = newStream;
-        myVideoRef.current.onloadedmetadata = () => {
-          myVideoRef.current.play().catch(e => console.error('Play failed:', e));
-        };
+      if (!channelName) {
+        alert('Please enter a channel name');
+        return;
       }
   
-      socket.emit('startStream', { userId });  // Emit to signal that streaming has started
-  
-    } catch (err) {
-      console.error('Error starting stream:', err);
-      alert(`Camera error: ${err.message}`);
-    }
-  };
-  
-  
-
-
-  const stopStreaming = () => {
-    // Stop the local stream
-    if (myStream) {
-      myStream.getTracks().forEach(track => track.stop());
-      setMyStream(null);
-      socket.emit('stopStream', userId);
+      setIsHost(asHost);
       
-      // Close all peer connections to avoid leftover connections
-      Object.values(peerConnections.current).forEach(pc => pc.close());
-      peerConnections.current = {}; // Clear peer connections map
-    }
-  
-    // Reset the remote video element
-    if (remoteVideoRef.current) {
-      remoteVideoRef.current.srcObject = null;
-    }
+      // Create local audio and video tracks
+      localTracksRef.current = await AgoraService.createTracks();
     
-    setRemoteStream(null); // Reset the remote stream state
-  };
-  
-  
-
-  const watchStream = async (streamerId) => {
-    if (streamerId === userId) {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ 
-          video: true, 
-          audio: true 
-        });
-        if (remoteVideoRef.current) {
-          remoteVideoRef.current.srcObject = stream;
-          setRemoteStream({ userId: streamerId, stream });
+      // Join the channel
+      await AgoraService.joinChannel(channelName, null, asHost ? 'host' : 'audience');
+      
+      if (asHost) {
+        // Host publishes their tracks
+        await AgoraService.publish(localTracksRef.current);
+        
+        // Set up local video display after joining
+        if (localVideoRef.current) {
+          localVideoRef.current[1].play(localRef.current);
         }
-        return;
-      } catch (err) {
-        console.error('Error accessing media for same-device test:', err);
-        return;
       }
-    }
-    
-    socket.emit('joinStream', { streamerId });
-  };
   
-
-  const handleBack = () => {
-    navigate('/post');
-  };
-  useEffect(() => {
-    if (myStream && myVideoRef.current) {
-      console.log('Effect assignment to video element');
-      myVideoRef.current.srcObject = myStream;
-      myVideoRef.current.onloadedmetadata = () => {
-        myVideoRef.current.play().catch(e => console.error('Effect play failed:', e));
-      };
+      setJoined(true);
+    } catch (error) {
+      console.error('Error joining channel:', error);
     }
-  }, [myStream]);
+  };
+
+  const leaveChannel = async () => {
+    try {
+      if (localTracksRef.current) {
+        localTracksRef.current[0].close();
+        localTracksRef.current[1].close();
+        if (isHost) {
+          await AgoraService.unpublish(localTracksRef.current);
+        }
+      }
+      
+      await AgoraService.leaveChannel();
+      setJoined(false);
+      setIsHost(false);
+      setRemoteUsers([]);
+    } catch (error) {
+      console.error('Error leaving channel:', error);
+    }
+  };
+
+  const toggleAudio = () => {
+    if (localTracksRef.current) {
+      localTracksRef.current[0].setEnabled(!audioEnabled);
+      setAudioEnabled(!audioEnabled);
+    }
+  };
+
+  const toggleVideo = () => {
+    if (localTracksRef.current) {
+      localTracksRef.current[1].setEnabled(!videoEnabled);
+      setVideoEnabled(!videoEnabled);
+    }
+  };
 
   return (
-    <div style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto' }}>
-      <IconButton onClick={() => navigate('/post')}>
-        <ArrowBackIcon />
-      </IconButton>
-
-      <Typography variant="h4" gutterBottom>Video Streaming</Typography>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-        <div style={{ border: '1px solid #ddd', padding: '10px' }}>
-          <Typography variant="h6">Your Stream</Typography>
-          <video ref={myVideoRef} autoPlay muted playsInline style={{ width: '100%' }} />
-          {myStream ? (
-            <Button onClick={stopStreaming} color="error" fullWidth>
-              Stop Streaming
-            </Button>
-          ) : (
-            <Button onClick={startStreaming} disabled={isLoading} fullWidth>
-              {isLoading ? 'Starting...' : 'Start Streaming'}
-            </Button>
-          )}
-        </div>
-
-        <div style={{ border: '1px solid #ddd', padding: '10px' }}>
-          <Typography variant="h6">Remote Stream</Typography>
-          <video ref={remoteVideoRef} autoPlay playsInline style={{ width: '100%' }} />
-          {remoteStream && (
-            <Button onClick={stopWatching} color="secondary" fullWidth>
-              Stop Watching
-            </Button>
-          )}
-        </div>
-      </div>
-
-      <div style={{ marginTop: '30px' }}>
-        <Typography variant="h5">Active Streams</Typography>
-        {streams.filter(s => s.userId !== userId).map(stream => (
-          <div key={stream.userId} style={{ margin: '10px 0' }}>
-            <Typography>Stream by {stream.userId}</Typography>
-            <Button 
-              onClick={() => watchStream(stream.userId)}
-              disabled={!!remoteStream || isLoading}
+    <Box sx={{ p: 3 }}>
+      <Typography variant="h4" gutterBottom>
+        {isHost ? 'Live Stream Host' : 'Live Stream Viewer'}
+      </Typography>
+      
+      {!joined ? (
+        <Card sx={{ p: 2, maxWidth: 500 }}>
+          <CardContent>
+            <Typography variant="h6" gutterBottom>
+              Join Channel
+            </Typography>
+            <input
+              type="text"
+              value={channelName}
+              onChange={(e) => setChannelName(e.target.value)}
+              placeholder="Enter channel name"
+              style={{ width: '100%', padding: '8px', marginBottom: '16px' }}
+            />
+            <Button
+              variant="contained"
+              color="primary"
+              fullWidth
+              onClick={() => joinChannel(true)}
+              sx={{ mb: 2 }}
             >
-              Watch
+              Start Broadcast
             </Button>
-          </div>
-        ))}
-      </div>
-    </div>
+            <Button
+              variant="outlined"
+              color="primary"
+              fullWidth
+              onClick={() => joinChannel(false)}
+            >
+              Join as Viewer
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <Box>
+          <Grid container spacing={2}>
+          {isHost && (
+              <Grid item xs={12} md={6}>
+                <Box sx={{ position: 'relative', width: '100%', height: '300px', bgcolor: 'black' }}>
+                  <video
+                    ref={localVideoRef}
+                    autoPlay
+                    playsInline
+                    controls
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  />
+                  <Typography 
+                    variant="caption" 
+                    sx={{ 
+                      position: 'absolute', 
+                      bottom: 8, 
+                      left: 8, 
+                      color: 'white',
+                      bgcolor: 'rgba(0,0,0,0.5)',
+                      p: 0.5
+                    }}
+                  >
+                    You (Host)
+                  </Typography>
+                </Box>
+              </Grid>
+            )}
+            
+            {remoteUsers.map(user => (
+              <Grid item xs={12} md={6} key={user.uid}>
+                <Box sx={{ position: 'relative', width: '100%', height: '300px', bgcolor: 'black' }}>
+                  <div
+                    ref={ref => {
+                      if (ref && user.videoTrack) {
+                        user.videoTrack.play(ref);
+                      }
+                    }}
+                    style={{ width: '100%', height: '100%' }}
+                  />
+                  <Typography 
+                    variant="caption" 
+                    sx={{ 
+                      position: 'absolute', 
+                      bottom: 8, 
+                      left: 8, 
+                      color: 'white',
+                      bgcolor: 'rgba(0,0,0,0.5)',
+                      p: 0.5
+                    }}
+                  >
+                    Host ID {user.uid}
+                  </Typography>
+                </Box>
+              </Grid>
+            ))}
+          </Grid>
+          
+          <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center', gap: 2 }}>
+            {isHost && (
+              <>
+                <IconButton
+                  color={audioEnabled ? 'primary' : 'secondary'}
+                  onClick={toggleAudio}
+                >
+                  {audioEnabled ? <Mic /> : <MicOff />}
+                </IconButton>
+                <IconButton
+                  color={videoEnabled ? 'primary' : 'secondary'}
+                  onClick={toggleVideo}
+                >
+                  {videoEnabled ? <Videocam /> : <VideocamOff />}
+                </IconButton>
+              </>
+            )}
+            <Button
+              variant="contained"
+              color="error"
+              startIcon={<ExitToApp />}
+              onClick={leaveChannel}
+            >
+              Leave Channel
+            </Button>
+          </Box>
+        </Box>
+      )}
+    </Box>
   );
 };
 
-export default VideoStream;
+export default LiveStream;
