@@ -90,14 +90,16 @@ const Mentee = () => {
 
   const requestMentorship = async (mentorId) => {
     try {
-      await axios.post(`${API_URL}/mentor/request-mentorship`, {
+      await fetch(`${API_URL}/mentor/request-mentorship`, {
         mentorId,
         menteeId: loggedInUserId,
+      },{
+          method: 'POST'
       });
       alert('Mentorship request sent!');
-      socket.emit('mentorship-request', { mentorId, menteeId: loggedInUserId });
     } catch (err) {
       alert('Error requesting mentorship');
+      console.log(err);
     }
   };
 
