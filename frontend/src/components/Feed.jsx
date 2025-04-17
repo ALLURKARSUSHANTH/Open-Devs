@@ -263,7 +263,7 @@ const GetPosts = () => {
         // Desktop grid view
         <Grid container spacing={3}>
           {posts.map((post, index) => (
-            <Grid item xs={12} sm={6} md={4} lg={3} key={post._id}>
+            <Grid item xs={12} sm={6} md={4} key={post._id}>
               <Grow in timeout={(index % 4 + 1) * 150}>
                 <Box>
                   <PostCard
