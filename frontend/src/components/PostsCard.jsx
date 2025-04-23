@@ -28,7 +28,6 @@ import {
   CommentOutlined,
   Favorite,
   DeleteOutline,
-  MoreVert,
   PersonAdd,
   Link,
   ExpandMore,
@@ -294,12 +293,6 @@ const PostCard = ({
                     </Tooltip>
                   )}
                 </Stack>
-              )}
-
-              {isAuthor && (
-                <IconButton onClick={handleMenuOpen}>
-                  <MoreVert />
-                </IconButton>
               )}
             </Box>
           </Box>
