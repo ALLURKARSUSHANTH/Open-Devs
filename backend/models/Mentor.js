@@ -4,7 +4,7 @@ const mongoose = require('mongoose');
 const Mentor = new mongoose.Schema({
   _id: { type: String, required: true, ref: 'User' }, // Reference to User model
   mentees: [{ type: String, ref: 'User' }],  // List of mentees' userIds
-  menteeRequests: [{ type: String, ref: 'User' }],
+  menteeRequests: [{ menteeId: { type: String, ref: 'User', required: true } }],
   status: { type: String, default: 'available' },
   reviews: [{ // New field to store reviews from mentees
     menteeId: { type: String, ref: 'User', required: true },

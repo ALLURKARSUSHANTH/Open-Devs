@@ -22,12 +22,12 @@ const notificationSchema = new mongoose.Schema(
     },
     type: { 
       type: String, 
-      enum: ['connectionRequest', 'newFollower', 'message'], // Add more types as needed
+      enum: ['connectionRequest', 'newFollower', 'message','menteeRequest'], // Add more types as needed
       required: true 
     },
   },
   {
-    timestamps: true, // Automatically adds `createdAt` and `updatedAt` fields
+    timestamps: true,
   }
 );
 

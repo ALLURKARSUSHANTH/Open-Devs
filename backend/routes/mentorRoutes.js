@@ -14,10 +14,7 @@ router.get('/mentees/:mentorId', mentoringController.getMentees);
 // Get all mentee requests for a mentor
 router.get('/requests/:mentorId', mentoringController.getMenteeRequests);
 
-// Mark request as read
-router.patch('/requests/:requestId/read', mentoringController.markRequestAsRead);
-
 // Accept mentee request
-router.post('/requests/:requestId/accept', mentoringController.acceptMenteeRequest);
+router.post('/requests/:mentorId/:menteeId/accept', mentoringController.acceptMenteeRequest);
 
 module.exports = router;

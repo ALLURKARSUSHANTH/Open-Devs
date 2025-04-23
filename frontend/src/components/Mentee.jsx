@@ -90,16 +90,19 @@ const Mentee = () => {
 
   const requestMentorship = async (mentorId) => {
     try {
-      await fetch(`${API_URL}/mentor/request-mentorship`, {
-        mentorId,
+      const response = await axios.post(`${API_URL}/mentor/request-mentorship`, {
+        mentorId: mentorId,
         menteeId: loggedInUserId,
-      },{
-          method: 'POST'
       });
-      alert('Mentorship request sent!');
+  
+      if (response.status >= 200 && response.status < 300) {
+        alert('Mentorship request sent!');
+      } else {
+        alert('Request was sent, but the server responded with an unexpected status.');
+      }
     } catch (err) {
       alert('Error requesting mentorship');
-      console.log(err);
+      console.error(err);
     }
   };
 

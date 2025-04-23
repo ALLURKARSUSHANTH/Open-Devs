@@ -6,7 +6,6 @@ const UserSchema = new mongoose.Schema({
   photoURL: { type: String ,default: ''},
   displayName: { type: String }, 
   role : { type: String, default: 'user' },
-  level: { type: String, default: 'beginner' },
   points: { 
     type: Number, 
     default: 0,
