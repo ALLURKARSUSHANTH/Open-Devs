@@ -97,7 +97,8 @@ exports.getMentors = async (req, res) => {
 
 exports.becomeMentee = async (req, res) => {
   try {
-    const { mentorId, menteeId } = req.body;
+    const mentorId = req.body.mentorId;
+    const menteeId = req.body.menteeId
 
     if (!mentorId || !menteeId) {
       return res.status(400).json({ error: "Mentor ID and Mentee ID are required" });
@@ -118,15 +119,13 @@ exports.becomeMentee = async (req, res) => {
       return res.status(400).json({ error: "Mentee already exists" });
     }
 
-    // Check if mentee already has a pending request
-    const hasPendingRequest = mentor.menteeRequests.some(
-      (request) => request.menteeId.toString() === menteeId
+    const hasExistingRequest = mentor.menteeRequests.some(
+      request => request.menteeId.toString() === menteeId
     );
 
-    if (hasPendingRequest) {
-      return res.status(400).json({ error: "Mentee request already pending" });
+    if (hasExistingRequest) {
+      return res.status(400).json({ error: "Mentee request already exists" });
     }
-
     // Add mentee to mentor's request list
     mentor.menteeRequests.push({ menteeId });
     await mentor.save();
@@ -136,6 +135,7 @@ exports.becomeMentee = async (req, res) => {
       userId: mentorId,
       message: `${mentee.displayName} wants to be your mentee.`,
       senderId: menteeId,
+      type: "menteeRequest"
     });
     await notification.save();
 

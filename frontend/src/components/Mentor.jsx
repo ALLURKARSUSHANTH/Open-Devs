@@ -19,12 +19,15 @@ import {
   ListItem,
   ListItemAvatar,
   ListItemText,
-  Paper
+  Paper,
+  Tooltip
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import NotificationsIcon from '@mui/icons-material/Notifications';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import CancelIcon from '@mui/icons-material/Cancel';
 import axios from 'axios';
 
 const Mentor = () => {
@@ -86,22 +89,22 @@ const Mentor = () => {
   };
 
   const handleAcceptRequest = async (requestId, menteeId) => {
+    // Optimistically update the UI
+    const requestToAccept = menteeRequests.find(r => r._id === requestId);
+    const updatedRequests = menteeRequests.filter(r => r._id !== requestId);
+    setMenteeRequests(updatedRequests);
+    
+    if (requestToAccept?.mentee) {
+      setMenteeData(prev => [...prev, requestToAccept.mentee]);
+    }
+  
     try {
-      const response = await axios.post(`${API_URL}/mentor/requests/${loggedInUserId}/${menteeId}/accept`);
-      
-      if (!response.ok) throw new Error("Failed to accept request");
-      
-      // Update both requests and mentees lists
-      const updatedRequests = menteeRequests.filter(request => request._id !== requestId);
-      setMenteeRequests(updatedRequests);
-      
-      const newMentee = menteeRequests.find(request => request._id === requestId)?.mentee;
-      if (newMentee) {
-        setMenteeData(prev => [...prev, newMentee]);
-      }
-      
+      await axios.post(`${API_URL}/mentor/requests/${loggedInUserId}/${menteeId}/accept`);
     } catch (error) {
-      console.error("Error accepting request:", error);
+      // Revert if the request fails
+      setMenteeRequests(prev => [...prev, requestToAccept]);
+      setMenteeData(prev => prev.filter(m => m._id !== menteeId));
+      throw error;
     }
   };
 
@@ -160,17 +163,16 @@ const Mentor = () => {
                       }}
                       secondaryAction={
                         <Box>
-                          <Button 
-                            size="small" 
-                            color="primary"
-                            onClick={() => handleAcceptRequest(request._id, mentee._id)}
-                            sx={{ mr: 1 }}
-                          >
-                            Accept
-                          </Button>
-                          {/* <IconButton onClick={() => handleMarkAsRead(request._id)}>
+                          <Tooltip title="Accept Request" arrow>
+                          <IconButton onClick={() => handleAcceptRequest(request._id, mentee._id)}>
                             <CheckCircleIcon color={request.read ? 'disabled' : 'primary'} />
-                          </IconButton> */}
+                          </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Reject Request" arrow>
+                          <IconButton onClick={() => handleRejectRequest(request._id, mentee._id)}>
+                            <CancelIcon color={request.read ? 'disabled' : 'error'} />
+                          </IconButton> 
+                          </Tooltip>
                         </Box>
                       }
                     >

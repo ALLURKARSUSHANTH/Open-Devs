@@ -95,14 +95,24 @@ const Mentee = () => {
         menteeId: loggedInUserId,
       });
   
-      if (response.status >= 200 && response.status < 300) {
-        alert('Mentorship request sent!');
+      if (response.data.message) {
+        alert(response.data.message); 
       } else {
-        alert('Request was sent, but the server responded with an unexpected status.');
+        alert('Mentorship request sent!'); 
       }
     } catch (err) {
-      alert('Error requesting mentorship');
-      console.error(err);
+      if (err.response) {
+        if (err.response.data.error) {
+          alert(err.response.data.error); 
+        } else {
+          alert('Request failed: ' + err.response.statusText);
+        }
+      } else if (err.request) {
+        alert('Network error - please check your connection');
+      } else {
+        alert('Error: ' + err.message);
+      }
+      console.error('Request error:', err);
     }
   };
 
