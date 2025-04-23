@@ -25,6 +25,7 @@ import VideoStream from "./VideoStream";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import PasswordResetPage from "../pages/PasswordResetPage";
+import NotificationCenter from "../pages/NotificationCenter";
 
 function AppRoutes() {
   const [user, setUser] = useState(null);
@@ -130,6 +131,12 @@ function AppRoutes() {
           path="/stream"
           element={
             user ? <VideoStream userId={user.uid} /> : <Navigate to="/signin" />
+          }
+        />
+        <Route
+          path="/notifications"
+          element={
+            user ? <NotificationCenter loggedInUserId={user.uid}/> : <Navigate to="/signin" />
           }
         />
         <Route

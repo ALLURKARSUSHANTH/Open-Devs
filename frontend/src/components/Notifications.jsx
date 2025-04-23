@@ -22,13 +22,15 @@ import CloseIcon from '@mui/icons-material/Close';
 import DoneAllIcon from '@mui/icons-material/DoneAll';
 import socket from '../context/socket';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 
 const Notifications = ({ loggedInUserId }) => {
   const [notificationCount, setNotificationCount] = useState(0);
   const [notifications, setNotifications] = useState([]);
   const [anchorEl, setAnchorEl] = useState(null);
   const [processing, setProcessing] = useState(false);
-  const API = import.meta.env.VITE_API_URL;
+  const API = import.meta.env.VITE_API_URL;4
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (!loggedInUserId) return;
@@ -127,38 +129,50 @@ const Notifications = ({ loggedInUserId }) => {
         </Badge>
       </IconButton>
 
-      <Menu
-        anchorEl={anchorEl}
-        open={Boolean(anchorEl)}
-        onClose={handleNotificationClose}
-        TransitionComponent={Fade}
-        sx={{ 
-          mt: 5,
-          '& .MuiPaper-root': {
-            width: 400,
-            maxHeight: 500,
-            borderRadius: 2,
-            boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.15)'
-          }
-        }}
-      >
-        <Box sx={{ p: 2 }}>
-          <Stack direction="row" justifyContent="space-between" alignItems="center">
-            <Typography variant="h6" fontWeight="bold">
-              Notifications
-            </Typography>
-            {notificationCount > 0 && (
-              <Button
-                startIcon={<DoneAllIcon />}
-                onClick={markAllAsRead}
-                size="small"
-                sx={{ textTransform: 'none' }}
-              >
-                Mark all as read
-              </Button>
-            )}
-          </Stack>
-        </Box>
+<Menu
+  anchorEl={anchorEl}
+  open={Boolean(anchorEl)}
+  onClose={handleNotificationClose}
+  TransitionComponent={Fade}
+  sx={{ 
+    mt: 5,
+    '& .MuiPaper-root': {
+      width: 400,
+      maxHeight: 500,
+      borderRadius: 2,
+      boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.15)'
+    }
+  }}
+>
+  <Box sx={{ p: 2 }}>
+    <Stack direction="row" justifyContent="space-between" alignItems="center">
+      <Typography variant="h6" fontWeight="bold">
+        Notifications
+      </Typography>
+      <Stack direction="row" spacing={1}>
+        {notificationCount > 0 && (
+          <Button
+            startIcon={<DoneAllIcon />}
+            onClick={markAllAsRead}
+            size="small"
+            sx={{ textTransform: 'none' }}
+          >
+            Mark all
+          </Button>
+        )}
+        <Button
+          onClick={() => {
+            navigate('/notifications');
+            handleNotificationClose();
+          }}
+          size="small"
+          sx={{ textTransform: 'none' }}
+        >
+          View All
+        </Button>
+      </Stack>
+    </Stack>
+  </Box>
 
         <Divider />
 
