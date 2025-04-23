@@ -12,7 +12,10 @@ const LiveStream = () => {
   const [channelName, setChannelName] = useState('');
   
   const localVideoRef = useRef(null);
-  const localTracksRef = useRef(null);
+  const localTracksRef = useRef({
+    audioTrack: null,
+    videoTrack: null
+  });
 
   // Initialize Agora client
   useEffect(() => {
@@ -42,53 +45,74 @@ const LiveStream = () => {
     };
   }, []);
 
+  useEffect(() => {
+    if (joined && isHost) {
+      console.debug('Video element state:', {
+        element: document.getElementById('local-video-preview'),
+        hasTrack: !!localTracksRef.current?.videoTrack,
+        isPlaying: localVideoRef.current?.readyState === 4
+      });
+      
+      // Emergency fallback - try reattaching after delay
+      const timer = setTimeout(() => {
+        if (!localVideoRef.current?.srcObject && localTracksRef.current?.videoTrack) {
+          console.warn('Reattaching video track');
+          localTracksRef.current.videoTrack.play(localVideoRef.current);
+        }
+      }, 1000);
+  
+      return () => clearTimeout(timer);
+    }
+  }, [joined, isHost]);
+
   const joinChannel = async (asHost = false) => {
     try {
       if (!channelName) {
-        alert('Please enter a channel name');
+        alert('Please enter channel name');
         return;
       }
-  
+
       setIsHost(asHost);
       
-      // Create local audio and video tracks
-      localTracksRef.current = await AgoraService.createTracks();
-    
-      // Join the channel
+      // Create tracks (with safety wrapper)
+      const tracks = await AgoraService.createTracks();
+      localTracksRef.current = tracks;
+
+      // SAFETY CHECK: Ensure video element exists before playing
+      if (asHost && tracks.videoTrack && localVideoRef.current) {
+        tracks.videoTrack.play(localVideoRef.current);
+      } else if (!localVideoRef.current) {
+        console.error('Video element not available!');
+      }
+
       await AgoraService.joinChannel(channelName, null, asHost ? 'host' : 'audience');
       
-      if (asHost) {
-        // Host publishes their tracks
-        await AgoraService.publish(localTracksRef.current);
-        
-        // Set up local video display after joining
-        if (localVideoRef.current) {
-          localVideoRef.current[1].play(localRef.current);
-        }
+      if (asHost && tracks.audioTrack) {
+        await AgoraService.publish([tracks.audioTrack, tracks.videoTrack].filter(Boolean));
       }
-  
+
       setJoined(true);
     } catch (error) {
-      console.error('Error joining channel:', error);
+      console.error('Join failed:', error);
+      alert(`Error: ${error.message}`);
     }
   };
 
   const leaveChannel = async () => {
     try {
-      if (localTracksRef.current) {
-        localTracksRef.current[0].close();
-        localTracksRef.current[1].close();
-        if (isHost) {
-          await AgoraService.unpublish(localTracksRef.current);
-        }
-      }
+      const { audioTrack, videoTrack } = localTracksRef.current;
+      
+      if (audioTrack) audioTrack.close();
+      if (videoTrack) videoTrack.close();
       
       await AgoraService.leaveChannel();
+      
+      // Reset references
+      localTracksRef.current = { audioTrack: null, videoTrack: null };
       setJoined(false);
       setIsHost(false);
-      setRemoteUsers([]);
     } catch (error) {
-      console.error('Error leaving channel:', error);
+      console.error('Leave error:', error);
     }
   };
 
@@ -148,32 +172,33 @@ const LiveStream = () => {
         <Box>
           <Grid container spacing={2}>
           {isHost && (
-              <Grid item xs={12} md={6}>
-                <Box sx={{ position: 'relative', width: '100%', height: '300px', bgcolor: 'black' }}>
-                  <video
-                    ref={localVideoRef}
-                    autoPlay
-                    playsInline
-                    controls
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  />
-                  <Typography 
-                    variant="caption" 
-                    sx={{ 
-                      position: 'absolute', 
-                      bottom: 8, 
-                      left: 8, 
-                      color: 'white',
-                      bgcolor: 'rgba(0,0,0,0.5)',
-                      p: 0.5
-                    }}
-                  >
-                    You (Host)
-                  </Typography>
-                </Box>
-              </Grid>
-            )}
-            
+            <Grid item xs={12} md={6}>
+              <Box sx={{ 
+                position: 'relative', 
+                width: '100%', 
+                height: '300px', 
+                bgcolor: 'black',
+                display: 'flex' 
+              }}>
+                <video
+                  ref={localVideoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  style={{
+                    position: 'absolute',
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover'
+                  }}
+                />
+                <Typography variant="caption">
+                  You (Host)
+                </Typography>
+              </Box>
+            </Grid>
+          )}
+                      
             {remoteUsers.map(user => (
               <Grid item xs={12} md={6} key={user.uid}>
                 <Box sx={{ position: 'relative', width: '100%', height: '300px', bgcolor: 'black' }}>
