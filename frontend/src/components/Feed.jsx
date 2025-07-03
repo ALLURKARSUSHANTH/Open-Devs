@@ -127,7 +127,7 @@ const GetPosts = () => {
         <>
           <Stack spacing={2}>
             {posts.map((post, index) => (
-              <Grow in timeout={(index + 1) * 150} key={post._id}>
+              <Grid key={post._id}>
                 <Box>
                   <PostCard
                     post={post}
@@ -142,7 +142,7 @@ const GetPosts = () => {
                     theme={theme}
                   />
                 </Box>
-              </Grow>
+              </Grid>
             ))}
           </Stack>
           
