@@ -89,10 +89,9 @@ const initializeSocket = (server) => {
           await user2.save();
         }
 
-        // Mark the notification as read
-        await Notification.updateMany(
-          { userId: userId, senderId: senderId },
-          { $set: { isRead: true } }
+        // Delete the connection request notification
+        await Notification.deleteMany(
+          { userId: userId, senderId: senderId, type: 'connectionRequest' }
         );
 
         // Notify the sender that their request was accepted
@@ -131,8 +130,8 @@ const initializeSocket = (server) => {
         // Save the user
         await user.save();
 
-        // Delete the notification
-        await Notification.deleteMany({ userId: userId, senderId: senderId });
+        // Delete the connection request notification
+        await Notification.deleteMany({ userId: userId, senderId: senderId, type: 'connectionRequest' });
 
         // Notify the sender that their request was rejected
         const notification = new Notification({
@@ -251,6 +250,9 @@ const initializeSocket = (server) => {
             throw new Error('User or mentee not found');
           }
 
+          // Delete the mentorship request notification
+          await Notification.deleteMany({ userId: userId, senderId: menteeId, type: 'mentorshipRequest' });
+
           // Create a notification for the mentee
           const notification = new Notification({
             userId: menteeId,
@@ -279,6 +281,9 @@ const initializeSocket = (server) => {
         if (!user || !mentee) {
           throw new Error('User or mentee not found');
         }
+
+        // Delete the mentorship request notification
+        await Notification.deleteMany({ userId: userId, senderId: menteeId, type: 'mentorshipRequest' });
 
         // Create a notification for the mentee
         const notification = new Notification({
