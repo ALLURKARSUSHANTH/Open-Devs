@@ -104,6 +104,9 @@ exports.getPosts = async (req, res) => {
       .populate('author', 'displayName skills level followers following')
       .lean();
 
+    // Filter out posts with null authors (deleted users)
+    posts = posts.filter(post => post.author !== null);
+
     // Define scoring weights (easily adjustable)
     const weights = {
       directConnection: 40,    // Direct connections (highest priority)
