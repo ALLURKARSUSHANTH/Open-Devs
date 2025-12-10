@@ -17,6 +17,7 @@ const initializeSocket = (server) => {
   io.on('connection', (socket) => {
     console.log('a user connected:', socket.id);
 
+        
     // Add user to active users
     socket.on('joinRoom', (userId) => {
       // Remove old userId if reconnecting
