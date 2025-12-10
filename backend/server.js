@@ -17,7 +17,7 @@ const io = initializeSocket(server);
 app.use(cors({
   origin: "*",
   methods: "GET,POST,PUT,DELETE,PATCH,OPTIONS",
-  credentials: fasle,
+  credentials: false,
   allowedHeaders: "Content-Type,Authorization"
 }));
 
