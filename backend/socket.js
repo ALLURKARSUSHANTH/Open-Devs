@@ -132,6 +132,7 @@ const initializeSocket = (server) => {
 
         // Delete the connection request notification
         await Notification.deleteMany({ userId: userId, senderId: senderId, type: 'connectionRequest' });
+        console.log(`Connection request rejected by ${userId} from ${senderId}`);  
 
         // Notify the sender that their request was rejected
         const notification = new Notification({
