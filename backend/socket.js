@@ -19,6 +19,11 @@ const initializeSocket = (server) => {
 
     // Add user to active users
     socket.on('joinRoom', (userId) => {
+      // Remove old userId if reconnecting
+      if (socket.userId && socket.userId !== userId) {
+        activeUsers.delete(socket.userId);
+      }
+      socket.userId = userId; // Store userId on socket for disconnect cleanup
       socket.join(userId);
       activeUsers.add(userId);
       io.emit('activeUsers', Array.from(activeUsers)); // Emit active users list
